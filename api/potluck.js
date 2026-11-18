@@ -483,7 +483,7 @@ const actions = {
         if (!pin) fail(401, `Welcome back, ${person.name}! Enter your PIN to sign in on this device.`, 'pin_required');
         await checkPerson(g, person.id, pin);
       } else if ((tokens || []).includes(person.id)) {
-        fail(409, `Someone named ${person.name} already signed in on another device. If that's you, ask the organizer to reset your sign-in. Otherwise, add a last initial to your name.`, 'name_taken');
+        fail(409, `${person.name} is already signed in on another phone. If that's your household, have them tap their name at the top of the page and set a PIN, then sign in here with that PIN. Otherwise, use a different name.`, 'name_taken');
       } else if (pin) {
         await redis([['HSET', k.pins, person.id, pinHash(g, person.id, pin)]]);
       }
