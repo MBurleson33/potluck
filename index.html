@@ -22,6 +22,9 @@
 <meta name="twitter:image" content="https://holidaypotluck.vercel.app/og-image.jpg">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Potluck">
 <meta name="theme-color" content="#f7f0e6">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -260,6 +263,44 @@ body.landing .site-only{display:none!important}
 .cl-item.done .cl-box{background:var(--accent);border-color:var(--accent)}
 .detail-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .detail-acts svg,.section-head .btn svg{width:15px;height:15px}
+/* Footer extras */
+.fine-links{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.fine-links .link{font-weight:500;font-size:.84rem}
+.lang .link.on{text-decoration:none;color:var(--ink);font-weight:700}
+
+.steps-list{margin:0;padding-left:20px;line-height:1.7}
+
+/* Owner dashboard */
+.ow-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+@media(max-width:720px){.ow-stats{grid-template-columns:1fr 1fr}}
+.ow-stats .card{padding:16px}.ow-stats b{display:block;font-family:Fraunces,serif;font-size:1.8rem}.ow-stats span{color:var(--muted);font-size:.88rem}
+.ow-tools{display:flex;flex-direction:column;gap:12px;margin-bottom:18px}
+.ow-table-wrap{padding:0;overflow-x:auto}
+.ow-table{width:100%;border-collapse:collapse;font-size:.92rem}
+.ow-table th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line)}
+.ow-table td{padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+.ow-table tr:last-child td{border-bottom:0}
+.ow-acts{white-space:nowrap;text-align:right}.ow-acts .btn+.btn{margin-left:6px}
+
+/* Help wanted, dietary, recipes */
+.help-card{margin-bottom:28px;padding:20px 22px}
+.help-list{display:flex;flex-direction:column;gap:6px}
+.help{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 14px;background:var(--bg)}
+.help-text{flex:1;font-weight:500}
+.help.taken{background:transparent}
+.help.taken .help-text{color:var(--muted)}
+.help-who{font-weight:700;color:var(--accent);font-size:.9rem}
+.diet-card{background:var(--soft);border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:12px;padding:14px 16px;margin:-4px 0 18px}
+.diet-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}.diet-head svg{width:18px;height:18px;color:var(--accent)}
+.diet-tags{display:flex;flex-wrap:wrap;gap:6px}
+.diet-tag{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:.86rem}
+.diet-note{font-size:.88rem;margin-top:6px}
+.diet-edit{border-top:1px solid var(--line);padding-top:10px}
+.diet-edit summary{cursor:pointer;font-weight:700;font-size:.92rem}
+.recipe{display:inline-flex;align-items:center;gap:5px;font-size:.84rem;font-weight:700;margin-top:3px;text-decoration:none}
+.recipe svg{width:14px;height:14px}
+.recipe:hover{text-decoration:underline}
+
 /* Dish ideas */
 .sugg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
 .sugg:empty{display:none}
@@ -281,7 +322,7 @@ body.landing .site-only{display:none!important}
 .wiz-steps span.done{opacity:.5}
 .eyebrow-sm{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px}
-.tile{position:relative;border:2px solid transparent;border-radius:14px;padding:14px 12px;text-align:left;color:#fff;background:var(--tbg);min-height:104px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;box-shadow:inset 0 -40px 40px -20px rgba(0,0,0,.25)}
+.tile{position:relative;border:2px solid transparent;border-radius:14px;padding:46px 12px 14px;text-align:left;color:#fff;background:var(--tbg);min-height:104px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;box-shadow:inset 0 -40px 40px -20px rgba(0,0,0,.25)}
 .tile svg{width:26px;height:26px;position:absolute;top:12px;left:12px;color:#fff;opacity:.95}
 .tile b{font-size:.95rem;line-height:1.2}.tile span{font-size:.78rem;opacity:.85}
 .tile.on{outline:3px solid var(--ink);outline-offset:2px}
@@ -417,6 +458,8 @@ body.landing .site-only{display:none!important}
   </div></main>
 </div>
 
+<main id="ownerView" class="hidden page" style="flex:1"><div class="container" id="ownerBody"></div></main>
+
 <div id="site" class="hidden" style="flex:1;display:flex;flex-direction:column">
   <header class="hero" id="top">
     <div class="container">
@@ -437,7 +480,9 @@ body.landing .site-only{display:none!important}
       <div>
         <section id="menu">
           <div class="card checklist hidden" id="checklist"></div>
+          <div class="card help-card hidden" id="helpCard"></div>
           <div class="section-head"><div><h2>The menu</h2><p class="muted" id="menuSub"></p></div><button type="button" class="btn ghost small" id="printBtn">Print menu</button></div>
+          <div class="diet-card hidden" id="dietCard"></div>
           <div id="dishes"></div>
         </section>
         <section id="bring">
@@ -462,12 +507,75 @@ body.landing .site-only{display:none!important}
       <li><a href="#menu">The menu</a></li><li><a href="#bring">Bring a dish</a></li>
       <li><button class="link" id="orgBtn" style="font-weight:500">Organizer</button></li>
       <li><button class="link" id="leaveBtn" style="font-weight:500">Switch group</button></li></ul></div>
-    <div class="fine"><span id="footYear"></span><span>Made with love (and leftovers)</span></div>
+    <div class="fine"><span id="footYear"></span>
+      <span class="fine-links"><button type="button" class="link" id="installBtn">Install the app</button>
+      <span class="lang"><button type="button" class="link" data-lang="en">English</button> · <button type="button" class="link" data-lang="es">Español</button></span></span>
+      <span>Made with love (and leftovers)</span></div>
   </div>
 </footer>
 
 <div id="printView"></div>
 <script>
+/* ======================= Language (English / Español) ======================= */
+let LANG = (() => { try { const v = JSON.parse(localStorage.getItem('pl_lang')); if (v === 'en' || v === 'es') return v; } catch {}
+  return (navigator.language || '').toLowerCase().startsWith('es') ? 'es' : 'en'; })();
+const LOCALE = LANG === 'es' ? 'es' : undefined;
+// Spanish translations. Keys are the exact English text shown on the page.
+const ES = LANG === 'es' ? {"(no PIN)": "(sin PIN)", "(optional)": "(opcional)", "+ One more needed. Bring one?": "+ Falta uno más. ¿Traes uno?", ". Add yours anyway?": ". ¿Agregar el tuyo de todos modos?", ". You can change anything later from": ". Puedes cambiar todo después desde", "35 or more": "35 o más", "4 to 20 characters": "De 4 a 20 caracteres", "4 to 20 characters.": "De 4 a 20 caracteres.", "A simple sign-up sheet for holiday food, so every gathering has the right mix of mains, sides and desserts.": "Una hoja de inscripción sencilla para la comida de las fiestas, para que cada reunión tenga la mezcla perfecta de platos fuertes, guarniciones y postres.", "About 10 people": "Unas 10 personas", "About 20 people": "Unas 20 personas", "Add Potluck to your home screen": "Agrega Potluck a tu pantalla de inicio", "Add anyway": "Agregar de todos modos", "Add the date, time and place": "Agrega la fecha, la hora y el lugar", "Add to Home Screen": "Agregar a inicio", "Add to Home screen": "Agregar a la pantalla de inicio", "Add to calendar": "Agregar al calendario", "Add to the menu": "Agregar al menú", "Add to your calendar": "Agrégalo a tu calendario", "Added as a 3-hour event.": "Se agrega como un evento de 3 horas.", "Added to the menu. Thank you!": "¡Agregado al menú! ¡Gracias!", "Address": "Dirección", "Address or place": "Dirección o lugar", "Adults": "Adultos", "Already on the menu": "Ya está en el menú", "Anything else? e.g. Our son has a nut allergy": "¿Algo más? p. ej. Nuestro hijo es alérgico a las nueces", "Anything specific?": "¿Algo en particular?", "Apple Calendar or other (.ics)": "Calendario de Apple u otro (.ics)", "Are you coming?": "¿Vienes?", "Back": "Atrás", "Be the first to say what you're bringing.": "Sé el primero en decir qué vas a traer.", "Big party": "Fiesta grande", "Birthday, shower, game day…": "Cumpleaños, baby shower, día de partido…", "Bring a dish": "Trae un platillo", "Can't come": "No puedo ir", "Cancel": "Cancelar", "Category": "Categoría", "Changes saved": "Cambios guardados", "Choose": "Elige", "Choose what you need people to bring": "Elige qué necesitas que traigan", "Clean up…": "Limpiar…", "Click": "Haz clic en", "Close": "Cerrar", "Coming": "Voy", "Confirm. Potluck now opens like an app.": "Confirma. Ahora Potluck se abre como una app.", "Contains nuts": "Contiene nueces", "Continue": "Continuar", "Copy": "Copiar", "Create my potluck": "Crear mi potluck", "Created": "Creado", "Dairy-free": "Sin lácteos", "Date": "Fecha", "Delete": "Eliminar", "Delete forever": "Eliminar para siempre", "Delete group": "Eliminar grupo", "Delete this group": "Eliminar este grupo", "Delete this group?": "¿Eliminar este grupo?", "Details": "Detalles", "Details coming soon.": "Pronto habrá detalles.", "Dietary heads-up for cooks": "Aviso de dietas para quienes cocinan", "Dietary needs": "Necesidades alimentarias", "Dietary needs saved": "Necesidades alimentarias guardadas", "Done": "Listo", "Each line becomes a “Help wanted” item that one person can claim.": "Cada línea se convierte en un pendiente de “Se busca ayuda” que una persona puede apartar.", "Edit": "Editar", "Editing": "Editando", "Email me when someone signs up a dish": "Envíame un correo cuando alguien anote un platillo", "Enter the 4-digit PIN you set before. Forgot it? Ask the organizer to reset your sign-in.": "Escribe el PIN de 4 dígitos que creaste. ¿Lo olvidaste? Pide al organizador que restablezca tu acceso.", "Enter the master PIN (ADMIN_PIN in Vercel).": "Escribe el PIN maestro (ADMIN_PIN en Vercel).", "Enter the organizer PIN that was chosen when this group was created.": "Escribe el PIN de organizador que se eligió al crear este grupo.", "Enter your group code.": "Escribe el código de tu grupo.", "Event": "Evento", "Every potluck group on the site. Only you can see this page.": "Todos los grupos del sitio. Solo tú puedes ver esta página.", "Everyone RSVPs and signs up for a dish, and you can see what's still needed.": "Todos confirman y se anotan con un platillo, y ves qué falta todavía.", "Exit dashboard": "Salir del panel", "Family dinner": "Cena familiar", "Fewer adults": "Menos adultos", "Fewer kids": "Menos niños", "Fill the table": "Llenen la mesa", "Finish setting up": "Termina de configurar", "First, who are you?": "Primero, ¿quién eres?", "For your family, friends, church or office. It takes about a minute.": "Para tu familia, amigos, iglesia u oficina. Toma como un minuto.", "Free sign-up sheets for holiday potlucks. No accounts and no app, just a code you share.": "Hojas de inscripción gratis para comidas compartidas en las fiestas. Sin cuentas ni apps, solo un código que compartes.", "Give your gathering a name.": "Ponle nombre a tu reunión.", "Give your group a name.": "Ponle nombre a tu grupo.", "Gluten-free": "Sin gluten", "Good to know": "Para tener en cuenta", "Got a code from your host? Enter it here to see the menu and sign up.": "¿Te dieron un código? Escríbelo aquí para ver el menú y anotarte.", "Got it": "Entendido", "Group": "Grupo", "Group code": "Código del grupo", "Group deleted": "Grupo eliminado", "Group name": "Nombre del grupo", "Guests see a “Still needed” list based on these numbers.": "Los invitados ven una lista de “Falta” según estos números.", "Help wanted": "Se busca ayuda", "Hide": "Ocultar", "Holiday": "Festividad", "Holidays": "Festividades", "Host": "Anfitrión", "Hosted by": "Anfitriones", "How it works": "Cómo funciona", "I'll do it": "Yo me encargo", "I'm bringing something": "Voy a traer algo", "Ideas:": "Ideas:", "If you change it, the old code and link stop working.": "Si lo cambias, el código y el enlace anteriores dejarán de funcionar.", "Install app": "Instalar app", "Install the app": "Instalar la app", "Invite": "Invitar", "Invite link": "Enlace de invitación", "Invite people": "Invita a la gente", "Invite someone": "Invitar a alguien", "Invite your people 🎉": "Invita a tu gente 🎉", "Join": "Entrar", "Join your group": "Entra a tu grupo", "Just your name. This device will remember you.": "Solo tu nombre. Este dispositivo te recordará.", "Keep it": "Conservarlo", "Kids": "Niños", "Last active": "Última actividad", "Leave a category blank if you don't need a set number.": "Deja una categoría en blanco si no necesitas un número fijo.", "Leave a category blank if you don’t need a set number.": "Deja una categoría en blanco si no necesitas un número fijo.", "Leave blank to keep it": "Déjalo en blanco para no cambiarlo", "Leave organizer mode on this device": "Salir del modo organizador en este dispositivo", "Link copied": "Enlace copiado", "Made with love (and leftovers)": "Hecho con cariño (y sobras)", "Manage": "Administrar", "Manage your potluck": "Administra tu potluck", "Maybe": "Tal vez", "Menu": "Menú", "More adults": "Más adultos", "More kids": "Más niños", "Needs oven time, bringing a spoon…": "Necesita horno, traigo cuchara…", "Needs oven time, bringing a serving spoon…": "Necesita horno, traigo cuchara para servir…", "New organizer PIN": "Nuevo PIN de organizador", "Next": "Siguiente", "No one has RSVP'd yet.": "Nadie ha confirmado todavía.", "No one has signed in yet. Send the invite link from the Sharing tab.": "Nadie ha entrado todavía. Envía el enlace de invitación desde la pestaña Compartir.", "No start time is set, so it’s added as an all-day event.": "No hay hora de inicio, así que se agrega como evento de todo el día.", "Note": "Nota", "Notes for everyone": "Notas para todos", "Nothing signed up yet.": "Nadie se ha anotado todavía.", "Nut allergy": "Alergia a las nueces", "On": "Activados", "Off": "Desactivados", "One per line, for example:\nBig cooler\nFolding chairs\nSomeone to carve the turkey\nCleanup crew": "Uno por línea, por ejemplo:\nHielera grande\nSillas plegables\nAlguien que corte el pavo\nEquipo de limpieza", "Only you use this, to open organizer settings. Keep it private.": "Solo tú lo usas, para abrir la configuración del organizador. Mantenlo en privado.", "Open": "Abrir", "Open dashboard": "Abrir panel", "Open your browser's menu (⋮ or ⋯).": "Abre el menú de tu navegador (⋮ o ⋯).", "Opened as organizer": "Abierto como organizador", "Or give them the group code": "O dales el código del grupo", "Organizer": "Organizador", "Organizer PIN": "PIN de organizador", "Organizer sign-in": "Acceso del organizador", "Owner dashboard": "Panel del dueño", "People": "Personas", "Permanently removes this group and every holiday's menu, RSVPs and people.": "Elimina para siempre este grupo y el menú, las confirmaciones y las personas de cada festividad.", "Pick a date for your gathering.": "Elige una fecha para tu reunión.", "Pick a group code.": "Elige un código de grupo.", "Pick a name and a code, then choose the holiday. The whole site dresses up to match.": "Elige un nombre y un código, y luego la festividad. Todo el sitio se decora para la ocasión.", "Pick a starting point, then adjust. Guests see what’s still needed, so you don’t end up with five pies.": "Elige un punto de partida y ajústalo. Los invitados ven lo que falta, para que no terminen con cinco pays.", "Print menu": "Imprimir menú", "RSVP": "Confirmar", "Recipe": "Receta", "Recipe link": "Enlace a la receta", "Refresh": "Actualizar", "Remind me the day before": "Recuérdame un día antes", "Remove": "Quitar", "Remove groups inactive for": "Eliminar grupos sin actividad por", "Reset sign-in": "Restablecer acceso", "Save": "Guardar", "Save changes": "Guardar cambios", "Save dietary needs": "Guardar necesidades alimentarias", "Saved": "Guardado", "Search groups by name or code": "Busca grupos por nombre o código", "Send this link by text or email. It takes people straight in. They can also use the group code": "Envía este enlace por mensaje o correo. Lleva directo al grupo. También pueden usar el código", "Send your guests the link or the code. Nobody needs an account.": "Envía a tus invitados el enlace o el código. Nadie necesita cuenta.", "Serves": "Porciones", "Set a PIN": "Crear un PIN", "Change your PIN": "Cambiar tu PIN", "Share the link": "Comparte el enlace", "Sharing": "Compartir", "Share": "Compartir", "Share…": "Compartir…", "Shellfish allergy": "Alergia a mariscos", "Sign in": "Entrar", "Sign in to claim this. Just your name, and this device will remember you.": "Entra para apartar esto. Solo tu nombre, y este dispositivo te recordará.", "Sign out": "Salir", "Sign out anyway": "Salir de todos modos", "Sign out without a PIN?": "¿Salir sin un PIN?", "Site": "Sitio", "Site owner": "Dueño del sitio", "Skip for now": "Omitir por ahora", "Small get-together": "Reunión pequeña", "Something else": "Otra cosa", "Spicy": "Picante", "Start a fresh list for a new gathering": "Empezar una lista nueva para otra reunión", "Start a group": "Crea un grupo", "Start a potluck": "Organiza un potluck", "Start your own potluck": "Organiza tu propio potluck", "Still needed": "Falta", "Switch group": "Cambiar de grupo", "Switch group?": "¿Cambiar de grupo?", "Tell everyone what you're bringing so we don't end up with five pies. (Okay, five pies is fine.)": "Diles a todos qué vas a traer para no terminar con cinco pays. (Bueno, cinco pays no está mal.)", "Thank you!": "¡Gracias!", "The details": "Los detalles", "The menu": "El menú", "The table's empty… for now": "La mesa está vacía… por ahora", "This can't be undone. Every holiday's menu, RSVPs and people in": "Esto no se puede deshacer. El menú, las confirmaciones y las personas de cada festividad en", "This device remembers you. A 4-digit PIN lets you sign in as yourself on another phone or computer.": "Este dispositivo te recuerda. Un PIN de 4 dígitos te permite entrar como tú en otro teléfono o computadora.", "Use your PIN with your name to sign in on another phone or computer.": "Usa tu PIN con tu nombre para entrar en otro teléfono o computadora.", "This group's code and organizer PIN are set in Vercel (GROUP_CODE and ADMIN_PIN).": "El código y el PIN de organizador de este grupo se configuran en Vercel (GROUP_CODE y ADMIN_PIN).", "This is what your guests type to get in. Use 5 or more letters, numbers or dashes.": "Es lo que tus invitados escriben para entrar. Usa 5 o más letras, números o guiones.", "Time": "Hora", "Title": "Título", "Today": "Hoy", "Yesterday": "Ayer", "Type the group code": "Escribe el código del grupo", "Undo": "Deshacer", "Vegan": "Vegano", "Vegetarian": "Vegetariano", "Walk me through setup instead": "Mejor guíame paso a paso", "Website": "Sitio web", "We'll email you what you signed up to bring. Only you and the site can see this address.": "Te enviaremos por correo lo que te anotaste para traer. Solo tú y el sitio pueden ver esta dirección.", "What are you bringing?": "¿Qué vas a traer?", "What do you need people to bring?": "¿Qué necesitas que traigan?", "What should we call it?": "¿Cómo se llama?", "What we need": "Lo que necesitamos", "Whatever’s next": "La que siga", "What’s the occasion?": "¿Cuál es la ocasión?", "When": "Cuándo", "Where": "Dónde", "Who's bringing what?": "¿Quién trae qué?", "You": "Tú", "✓ You": "✓ Tú", "You’re already bringing": "Tú ya vas a traer", "You haven't set a PIN, so you won't be able to sign back in as": "No has creado un PIN, así que no podrás volver a entrar como", "Your PIN": "Tu PIN", "Your groups": "Tus grupos", "Your name": "Tu nombre", "You’ll go back to the front page, where you can join another group with its code. You can come back to this one with its code or link.": "Volverás a la página principal, donde puedes entrar a otro grupo con su código. Puedes regresar a este con su código o enlace.", "You’re all set. Send this link by text or email. It takes people straight to your menu, and nobody needs an account.": "¡Todo listo! Envía este enlace por mensaje o correo. Lleva directo a tu menú y nadie necesita cuenta.", "active in the last 30 days": "activos en los últimos 30 días", "at the top of the page.": "en la parte de arriba de la página.", "days": "días", "days to go": "días restantes", "day to go": "día restante", "dish so far": "platillo hasta ahora", "dishes so far": "platillos hasta ahora", "e.g. Aunt Linda": "p. ej. Tía Linda", "e.g. Grandma's sweet potato casserole": "p. ej. El camote al horno de la abuela", "e.g. Mom’s 60th Birthday": "p. ej. Los 60 de mamá", "e.g. Smith Family Potluck": "p. ej. Potluck de la familia García", "e.g. smith-thanksgiving": "p. ej. garcia-navidad", "email reminders": "recordatorios por correo", "lets someone sign in fresh, for example on a new phone or if they forgot their PIN.": "permite que alguien vuelva a entrar desde cero, por ejemplo en un teléfono nuevo o si olvidó su PIN.", "or": "o", "people signed in": "personas registradas", "to confirm": "para confirmar", "unless the organizer resets your sign-in.": "a menos que el organizador restablezca tu acceso.", "will be gone, and the code and link will stop working.": "se borrarán, y el código y el enlace dejarán de funcionar.", "you@example.com": "tu@correo.com", "you@example.com (leave blank for no emails)": "tu@correo.com (déjalo en blanco para no recibir correos)", "Thanks for coming": "Gracias por venir", "See you there": "Nos vemos allá", "Everything’s covered!": "¡Ya está todo cubierto!", "✓ Covered": "✓ Cubierto", "Hmm, that didn’t work": "Mmm, eso no funcionó", "Please sign in again": "Vuelve a entrar", "This device isn’t signed in anymore. Sign in again with your name.": "Este dispositivo ya no tiene sesión. Vuelve a entrar con tu nombre.", "Remove this dish?": "¿Quitar este platillo?", "will come off the menu.": "saldrá del menú.", "Removed": "Quitado", "Signed out": "Sesión cerrada", "Sign-in reset": "Acceso restablecido", "Left organizer mode": "Saliste del modo organizador", "Refreshed": "Actualizado", "Nothing to clean up": "No hay nada que limpiar", "Copied last year’s setup": "Se copió la configuración del año pasado", "Press and hold the link to copy it": "Mantén presionado el enlace para copiarlo", "Installed! Look for Potluck on your home screen.": "¡Instalada! Busca Potluck en tu pantalla de inicio.", "Copy last year": "Copiar el año pasado", "Use last year’s details": "Usar los datos del año pasado", "Filled in ✓": "Listo ✓", "All claimed ✓": "Todo apartado ✓", "Tap the": "Toca el botón", "button at the bottom of Safari (the square with an arrow).": "en la parte de abajo de Safari (el cuadro con una flecha).", "Scroll down and tap": "Baja y toca", "Tap": "Toca", "Add": "Agregar", ". Potluck now opens like an app.": ". Ahora Potluck se abre como una app.", "This permanently removes the group": "Esto elimina para siempre el grupo", "Add the date, time and place.": "Agrega la fecha, la hora y el lugar.", "The Garcias": "Los García", "Mom & Dad": "Mamá y papá", "Turkey and ham are covered!": "¡El pavo y el jamón ya están cubiertos!", "Turkey and ham are covered! Bring a folding chair.": "¡El pavo y el jamón ya están cubiertos! Trae una silla plegable.", "Open organizer settings": "Abrir configuración del organizador", "Later": "Después", "Your organizer PIN should be at least 4 characters.": "Tu PIN de organizador debe tener al menos 4 caracteres.", "The new organizer PIN should be at least 4 characters.": "El nuevo PIN de organizador debe tener al menos 4 caracteres.", "Enter your 4-digit PIN.": "Escribe tu PIN de 4 dígitos.", "Sign in first.": "Primero entra.", "Christmas": "Navidad", "Easter": "Pascua", "Fourth of July": "4 de julio", "Halloween": "Halloween", "Labor Day": "Día del Trabajo", "Memorial Day": "Día de los Caídos", "New Year's Day": "Año Nuevo", "Thanksgiving": "Día de Acción de Gracias", "Valentine's Day": "Día de San Valentín", "Special gathering": "Reunión especial", "Ring it in together.": "Recibámoslo juntos.", "Bring something sweet.": "Trae algo dulce.", "Brunch, ham and a basket of goodies.": "Brunch, jamón y una canasta de delicias.", "Remembering together, around the grill.": "Recordando juntos, alrededor del asador.", "Burgers, watermelon and fireworks.": "Hamburguesas, sandía y fuegos artificiales.", "One last summer cookout.": "Una última carne asada de verano.", "Treats only. No tricks.": "Solo dulces, nada de travesuras.", "Gather 'round. Who's bringing what?": "Acérquense. ¿Quién trae qué?", "Merry everything, and plenty of it.": "Felices fiestas, y comida de sobra.", "Main dishes": "Platos fuertes", "Sides": "Guarniciones", "Appetizers": "Botanas", "Salads": "Ensaladas", "Bread & rolls": "Pan y bolillos", "Desserts": "Postres", "Drinks": "Bebidas", "Plates, ice & supplies": "Platos, hielo y utensilios", "Enter your name.": "Escribe tu nombre.", "Give your dish a name.": "Ponle nombre a tu platillo.", "Keep your group code to 30 characters or fewer.": "Usa 30 caracteres o menos en el código del grupo.", "Make your group code at least 5 characters, so it's hard to guess.": "Usa al menos 5 caracteres en el código del grupo, para que sea difícil de adivinar.", "Nothing to copy for a special gathering.": "No hay nada que copiar para una reunión especial.", "Only the person who claimed it can undo that.": "Solo quien lo apartó puede deshacerlo.", "Organizer PIN is incorrect.": "El PIN de organizador es incorrecto.", "Please sign in again.": "Vuelve a entrar.", "Someone just claimed that one.": "Alguien acaba de apartarlo.", "Something went wrong. Try again.": "Algo salió mal. Inténtalo de nuevo.", "That PIN doesn't match.": "Ese PIN no coincide.", "That PIN isn't right.": "Ese PIN no es correcto.", "That dish was already removed.": "Ese platillo ya se quitó.", "That email address doesn't look right.": "Esa dirección de correo no parece correcta.", "That group code is taken. Try another.": "Ese código ya está en uso. Prueba otro.", "That group is already gone.": "Ese grupo ya no existe.", "That request was removed.": "Ese pendiente se quitó.", "The organizer PIN should be 4 to 20 characters.": "El PIN de organizador debe tener de 4 a 20 caracteres.", "There's no setup from last year to copy.": "No hay configuración del año pasado para copiar.", "This group is full.": "Este grupo está lleno.", "This list is full.": "Esta lista está llena.", "Too many wrong PINs. Try again in 10 minutes, or ask the organizer to reset your PIN.": "Demasiados PIN incorrectos. Inténtalo en 10 minutos o pide al organizador que restablezca tu PIN.", "Too many tries. Wait 10 minutes and try your group code again.": "Demasiados intentos. Espera 10 minutos y vuelve a probar el código.", "Too many wrong organizer PINs. Wait 10 minutes and try again.": "Demasiados PIN de organizador incorrectos. Espera 10 minutos e inténtalo de nuevo.", "Too many wrong PINs. Wait 10 minutes and try again.": "Demasiados PIN incorrectos. Espera 10 minutos e inténtalo de nuevo.", "Use only letters, numbers and dashes in the group code.": "Usa solo letras, números y guiones en el código del grupo.", "We couldn't find a group with that code. Check the spelling, or start a new potluck.": "No encontramos un grupo con ese código. Revisa cómo lo escribiste o crea un potluck nuevo.", "You've started several groups today. Try again tomorrow.": "Ya creaste varios grupos hoy. Inténtalo mañana.", "We're not taking new groups right now. Please check back later.": "Por ahora no estamos aceptando grupos nuevos. Vuelve más tarde.", "You can only change your own dishes.": "Solo puedes cambiar tus propios platillos.", "You can only remove your own dishes.": "Solo puedes quitar tus propios platillos.", "Your PIN should be 4 digits.": "Tu PIN debe tener 4 dígitos.", "Your organizer PIN should be 4 to 20 characters.": "Tu PIN de organizador debe tener de 4 a 20 caracteres.", "That doesn’t match the group code.": "No coincide con el código del grupo.", "The original group can't be deleted from here.": "El grupo original no se puede eliminar desde aquí.", "This group's code is set in Vercel (GROUP_CODE). Change it there.": "El código de este grupo se configura en Vercel (GROUP_CODE). Cámbialo allí.", "This group's organizer PIN is set in Vercel (ADMIN_PIN). Change it there.": "El PIN de organizador de este grupo se configura en Vercel (ADMIN_PIN). Cámbialo allí.", "Something went wrong.": "Algo salió mal.", "Ham": "Jamón", "Lasagna": "Lasaña", "Pulled pork": "Cerdo deshebrado", "Chicken enchiladas": "Enchiladas de pollo", "Mac & cheese": "Macarrones con queso", "Mashed potatoes": "Puré de papa", "Green beans": "Ejotes", "Roasted veggies": "Verduras asadas", "Baked beans": "Frijoles horneados", "Veggie tray": "Charola de verduras", "Cheese & crackers": "Queso y galletas", "Deviled eggs": "Huevos rellenos", "Spinach dip": "Dip de espinaca", "Meatballs": "Albóndigas", "Garden salad": "Ensalada verde", "Fruit salad": "Ensalada de frutas", "Pasta salad": "Ensalada de pasta", "Caesar salad": "Ensalada César", "Dinner rolls": "Bolillos", "Cornbread": "Pan de maíz", "Garlic bread": "Pan de ajo", "Biscuits": "Bísquets", "Cookies": "Galletas", "Cheesecake": "Pay de queso", "Pie": "Pay", "Sweet tea": "Té dulce", "Lemonade": "Limonada", "Soda": "Refresco", "Coffee": "Café", "Punch": "Ponche", "Plates & napkins": "Platos y servilletas", "Cups": "Vasos", "Ice": "Hielo", "Forks & spoons": "Tenedores y cucharas", "To-go containers": "Recipientes para llevar", "Turkey": "Pavo", "Turkey breast": "Pechuga de pavo", "Stuffing": "Relleno", "Green bean casserole": "Cacerola de ejotes", "Sweet potato casserole": "Camote al horno", "Corn casserole": "Pastel de elote", "Cranberry sauce": "Salsa de arándano", "Pumpkin pie": "Pay de calabaza", "Pecan pie": "Pay de nuez", "Apple pie": "Pay de manzana", "Pumpkin bread": "Pan de calabaza", "Apple cider": "Sidra de manzana", "Prime rib": "Costilla de res", "Scalloped potatoes": "Papas gratinadas", "Roasted carrots": "Zanahorias asadas", "Cheese ball": "Bola de queso", "Charcuterie board": "Tabla de carnes frías", "Sausage balls": "Bolitas de salchicha", "Christmas cookies": "Galletas navideñas", "Fudge": "Dulce de chocolate", "Peppermint bark": "Chocolate con menta", "Hot cocoa": "Chocolate caliente", "Eggnog": "Rompope", "Lamb": "Cordero", "Asparagus": "Espárragos", "Carrot soufflé": "Soufflé de zanahoria", "Carrot cake": "Pastel de zanahoria", "Lemon bars": "Barritas de limón", "Bunny cookies": "Galletas de conejito", "Hot cross buns": "Panecillos de Pascua", "Cinnamon rolls": "Rollos de canela", "Mimosa fixings": "Ingredientes para mimosas", "Mummy dogs": "Hot dogs momia", "Pumpkin dip": "Dip de calabaza", "Monster cheese ball": "Bola de queso monstruo", "Caramel apples": "Manzanas con caramelo", "Pumpkin cookies": "Galletas de calabaza", "Spider cupcakes": "Cupcakes de araña", "Candy bowl": "Tazón de dulces", "Witches’ brew punch": "Ponche de bruja", "Black-eyed peas": "Frijoles de carita", "Sliders": "Mini hamburguesas", "Shrimp cocktail": "Coctel de camarón", "Champagne cupcakes": "Cupcakes de champaña", "Sparkling cider": "Sidra espumosa", "Champagne": "Champaña", "Pasta bake": "Pasta al horno", "Chocolate-covered strawberries": "Fresas con chocolate", "Red velvet cake": "Pastel red velvet", "Heart cookies": "Galletas de corazón", "Pink lemonade": "Limonada rosa", "Burgers": "Hamburguesas", "BBQ chicken": "Pollo BBQ", "Potato salad": "Ensalada de papa", "Corn on the cob": "Elotes", "Coleslaw": "Ensalada de col", "Watermelon salad": "Ensalada de sandía", "Watermelon": "Sandía", "Ice cream": "Helado", "Water bottles": "Botellas de agua", "Big cooler": "Hielera grande", "Folding chairs": "Sillas plegables", "Cleanup crew": "Equipo de limpieza", "Someone to carve the turkey": "Alguien que corte el pavo"} : {};
+const ES_PATTERNS = [
+  [/^(\d+) dish(es)? from (\d+) (person|people) so far\.$/, m => `${m[1]} platillo${m[1] === '1' ? '' : 's'} de ${m[3]} persona${m[3] === '1' ? '' : 's'} hasta ahora.`],
+  [/^(\d+) coming$/, m => `${m[1]} ${m[1] === '1' ? 'viene' : 'vienen'}`],
+  [/^\((\d+) adults?, (\d+) kids?\)(?: · (\d+) maybe)?$/, m => `(${m[1]} adulto${m[1] === '1' ? '' : 's'}, ${m[2]} niño${m[2] === '1' ? '' : 's'})${m[3] ? ` · ${m[3]} tal vez` : ''}`],
+  [/^(\d+) coming \((\d+) adults?, (\d+) kids?\)$/, m => `${m[1]} ${m[1] === '1' ? 'viene' : 'vienen'} (${m[2]} adulto${m[2] === '1' ? '' : 's'}, ${m[3]} niño${m[3] === '1' ? '' : 's'})`],
+  [/^(\d+) more$/, m => `faltan ${m[1]}`],
+  [/^\+ (\d+) more needed\. Bring one\?$/, m => `+ Faltan ${m[1]}. ¿Traes uno?`],
+  [/^(\d+) open$/, m => `${m[1]} pendiente${m[1] === '1' ? '' : 's'}`],
+  [/^(\d+) of (\d+)$/, m => `${m[1]} de ${m[2]}`],
+  [/^People \((\d+)\)$/, m => `Personas (${m[1]})`],
+  [/^Step (\d) of (\d)$/, m => `Paso ${m[1]} de ${m[2]}`],
+  [/^days to (.+)$/, m => `días para ${esName(m[1])}`],
+  [/^When and where is (.+)\?$/, m => `¿Cuándo y dónde es ${esName(m[1])}?`],
+  [/^Switched to (.+)$/, m => `Cambiaste a ${esName(m[1])}`],
+  [/^Welcome, (.+)!$/, m => `¡Hola, ${m[1]}!`],
+  [/^Welcome back, (.+)! Enter your PIN to sign in on this device\.$/, m => `¡Qué gusto verte de nuevo, ${m[1]}! Escribe tu PIN para entrar en este dispositivo.`],
+  [/^Welcome back, (.+)!$/, m => `¡Qué gusto verte de nuevo, ${m[1]}!`],
+  [/^Someone named (.+) already signed in on another device\. If that's you, ask the organizer to reset your sign-in\. Otherwise, add a last initial to your name\.$/,
+    m => `Alguien llamado ${m[1]} ya entró en otro dispositivo. Si eres tú, pide al organizador que restablezca tu acceso. Si no, agrega la inicial de tu apellido.`],
+  [/^Hi, (.+)$/, m => `Hola, ${m[1]}`],
+  [/^Automatic: next holiday \((.+)\)$/, m => `Automática: la próxima festividad (${esName(m[1])})`],
+  [/^You · serves (.+)$/, m => `Tú · ${m[1]} porciones`],
+  [/^(.+) · serves (.+)$/, m => `${m[1]} · ${m[2]} porciones`],
+  [/^(.+) · original group$/, m => `${m[1]} · grupo original`],
+  [/^(.+) is already bringing$/, m => `${m[1]} ya va a traer`],
+  [/^Remove (.+) from this list$/, m => `Quitar ${m[1]} de esta lista`],
+  [/^Remove (\d+) inactive groups?\?$/, m => `¿Eliminar ${m[1]} grupo${m[1] === '1' ? '' : 's'} sin actividad?`],
+  [/^Remove (.+)\?$/, m => `¿Quitar a ${m[1]}?`],
+  [/^Delete (.+)\?$/, m => `¿Eliminar ${m[1]}?`],
+  [/^Reset (.+)'s sign-in\?$/, m => `¿Restablecer el acceso de ${m[1]}?`],
+  [/^(.+) will be signed out everywhere\. Next time, they can sign in with just their name and pick a new PIN\. Their dishes stay on the menu\.$/,
+    m => `${m[1]} saldrá de todos sus dispositivos. La próxima vez podrá entrar solo con su nombre y elegir un PIN nuevo. Sus platillos se quedan en el menú.`],
+  [/^This removes (.+) and their dishes from this holiday's menu\.$/, m => `Esto quita a ${m[1]} y sus platillos del menú de esta festividad.`],
+  [/^to switch to (.+)\. Its details open right after, so you can add the date, time and place\.$/,
+    m => `para cambiar a ${esName(m[1])}. Sus detalles se abren enseguida para que agregues la fecha, la hora y el lugar.`],
+  [/^Reuse your (.+) (\d{4}) setup \(place, time and what you needed\)\?$/, m => `¿Reutilizar la configuración de ${esName(m[1])} ${m[2]} (lugar, hora y lo que necesitabas)?`],
+  [/^You set up (.+) last year(?: at (.+))?\.$/, m => `Organizaste ${esName(m[1])} el año pasado${m[2] ? ' en ' + m[2] : ''}.`],
+  [/^Sign up at (.+) with code (.+)$/, m => `Anótate en ${m[1]} con el código ${m[2]}`],
+  [/^Hosted by (.+)$/, m => `Anfitriones: ${m[1]}`],
+  [/^groups \(limit (\d+)\)$/, m => `grupos (límite ${m[1]})`],
+  [/^The daily job also removes groups after (\d+) days with no activity\.$/, m => `La tarea diaria también elimina grupos después de ${m[1]} días sin actividad.`],
+  [/^Automatic cleanup is off \(INACTIVE_DAYS=0\)\.$/, () => 'La limpieza automática está desactivada (INACTIVE_DAYS=0).'],
+  [/^(\d+) days ago$/, m => `hace ${m[1]} días`],
+  [/^(\d+) months ago$/, m => `hace ${m[1]} meses`],
+  [/^Removed (\d+)$/, m => `Se eliminaron ${m[1]}`],
+  [/^No groups have been inactive for (\d+) days\.$/, m => `Ningún grupo lleva ${m[1]} días sin actividad.`],
+  [/^Groups with no activity for (\d+)\+ days will be permanently deleted, along with their menus and people\.$/, m => `Los grupos sin actividad por ${m[1]} días o más se eliminarán para siempre, junto con sus menús y personas.`],
+  [/^with (\d+) (person|people) and all its menus\.$/, m => `con ${m[1]} persona${m[1] === '1' ? '' : 's'} y todos sus menús.`],
+  [/^at (.+)\.$/, m => `en ${m[1]}.`],
+  [/^(.+) · (.+)$/, m => ES[m[1]] ? `${ES[m[1]]} · ${m[2]}` : undefined],
+  [/^✓ (.+)$/, m => ES[m[1]] ? `✓ ${ES[m[1]]}` : undefined],
+];
+const esName = s => ES[s] || s;
+
 /* ======================= Holiday themes ======================= */
 const ICONS = {
   sparkle:{d:'M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4zM19 2l.8 2.2L22 5l-2.2.8L19 8l-.8-2.2L16 5l2.2-.8z'},
@@ -764,7 +872,7 @@ function toast(msg){
 function fmtDate(s, opts = { weekday:'long', month:'long', day:'numeric' }){
   if (!s) return '';
   const [y,m,d] = s.split('-').map(Number);
-  return new Date(y, m-1, d).toLocaleDateString(undefined, opts);
+  return new Date(y, m-1, d).toLocaleDateString(LOCALE, opts);
 }
 function daysBetween(a, b){
   const p = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y,m-1,d); };
@@ -778,6 +886,10 @@ function ico(n){
     home:'M4 11l8-7 8 7M6 9.5V20h12V9.5',
     gear:'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z',
     share:'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13',
+    book:'M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V2H6.5A2.5 2.5 0 004 4.5z',
+    alert:'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
+    mail:'M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zM22 6l-10 7L2 6',
+    phone:'M7 2h10a2 2 0 012 2v16a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2zM11 18h2',
     print:'M6 9V3h12v6M6 18H4a1 1 0 01-1-1v-6a2 2 0 012-2h14a2 2 0 012 2v6a1 1 0 01-1 1h-2M6 14h12v7H6z', edit:'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', trash:'M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3' }[n];
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 }
@@ -836,13 +948,14 @@ async function boot(){
   // Share links look like ?code=smith-thanksgiving
   const qs = new URLSearchParams(location.search).get('code');
   if (qs) { history.replaceState(null, '', location.pathname + location.hash); family = qs; }
+  if (location.hash === '#owner' && await ownerOpen()) return;
   if (family) { const ok = await load(!!qs); if (ok) return; }
   showGate();
 }
 function showGate(){
   S = null; document.body.classList.add('landing'); paintLanding(); renderYourGroups();
   $('#familyCode').value = ''; $('#gateErr').textContent = ''; $('#startErr').textContent = '';
-  $('#loading').classList.add('hidden'); $('#site').classList.add('hidden'); $('#gate').classList.remove('hidden');
+  $('#loading').classList.add('hidden'); $('#site').classList.add('hidden'); $('#ownerView').classList.add('hidden'); $('#gate').classList.remove('hidden');
   $('#navlinks').classList.add('hidden'); $('#navright').innerHTML = '<a class="btn small ghost" href="#join">Join</a><a class="btn small" href="#start">Start a potluck</a>';
   window.scrollTo(0, 0);
 }
@@ -876,7 +989,7 @@ async function load(fromGate){
     S = await api('state');
     family = S.group.code; store.set('pl_family', family); loadIdentity(); rememberGroup();
     document.body.classList.remove('landing');
-    $('#gate').classList.add('hidden'); $('#loading').classList.add('hidden');
+    $('#gate').classList.add('hidden'); $('#loading').classList.add('hidden'); $('#ownerView').classList.add('hidden');
     $('#site').classList.remove('hidden'); $('#navlinks').classList.remove('hidden');
     if (me && !S.people.some(p => p.id === me.id)) saveMe(null);
     form = null; render(); window.scrollTo(0, 0); return true;
@@ -893,7 +1006,14 @@ async function load(fromGate){
 async function refresh(){ try { S = await api('state'); render(); } catch {} }
 // Typing in the dish form shouldn't get wiped by the background refresh.
 const busy = () => document.querySelector('.overlay') || (document.activeElement && document.activeElement.closest('#dishForm,#rsvpCard'));
-setInterval(() => { if (document.visibilityState === 'visible' && S && !busy()) refresh(); }, 20000);
+// Every 20 seconds ask the tiny "has anything changed?" question; only reload the menu when it has.
+// A full reload every 10 minutes also picks up a new day (countdowns, holiday switchover).
+let lastFull = Date.now();
+setInterval(async () => {
+  if (document.visibilityState !== 'visible' || !S || busy()) return;
+  if (Date.now() - lastFull > 600000) { lastFull = Date.now(); return refresh(); }
+  try { const r = await api('ver'); if (r.v !== S.v) refresh(); } catch {}
+}, 20000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S && !busy()) refresh(); });
 
 $('#menuBtn').onclick = () => $('#nav').classList.toggle('open');
@@ -946,7 +1066,7 @@ function render(){
 function renderDetails(){
   const h = S.holiday, ev = S.event, date = ev.dateOverride || h.date;
   const rows = [];
-  if (date || ev.time) rows.push(['cal', 'When', [date && fmtDate(date, {weekday:'long', month:'long', day:'numeric', year:'numeric'}), ev.time].filter(Boolean).map(esc).join(' at ')]);
+  if (date || ev.time) rows.push(['cal', 'When', [date && fmtDate(date, {weekday:'long', month:'long', day:'numeric', year:'numeric'}), ev.time].filter(Boolean).map(esc).join(LANG === 'es' ? ', ' : ' at ')]);
   if (ev.location) rows.push(['pin', 'Where', `<a target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(ev.location)}">${esc(ev.location)}</a>`]);
   if (ev.host) rows.push(['home', 'Hosted by', esc(ev.host)]);
   $('#detailsCard').innerHTML = `<h3>The details</h3>` +
@@ -1000,6 +1120,10 @@ function renderRsvp(){
     ${me && cur.status && cur.status !== 'no' ? `<div class="grid2" style="gap:10px;grid-template-columns:1fr">
       <div class="stepper"><span>Adults</span><span class="row"><button type="button" data-k="adults" data-d="-1" aria-label="Fewer adults">−</button><b>${cur.adults}</b><button type="button" data-k="adults" data-d="1" aria-label="More adults">+</button></span></div>
       <div class="stepper"><span>Kids</span><span class="row"><button type="button" data-k="kids" data-d="-1" aria-label="Fewer kids">−</button><b>${cur.kids}</b><button type="button" data-k="kids" data-d="1" aria-label="More kids">+</button></span></div></div>` : ''}
+    ${me && cur.status && cur.status !== 'no' ? `<details class="diet-edit" ${cur.diet ? 'open' : ''}><summary>Dietary needs <span class="muted">(optional)</span></summary>
+      <div class="choices" style="margin-top:8px">${S.dietTags.map(t => `<button type="button" class="choice ${(cur.diet && cur.diet.tags || []).includes(t) ? 'on' : ''}" data-diet="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <input class="input" id="dietNote" maxlength="100" style="margin-top:8px" placeholder="Anything else? e.g. Our son has a nut allergy" value="${esc(cur.diet && cur.diet.note || '')}">
+      <button type="button" class="btn small quiet" id="dietSave" style="margin-top:8px">Save dietary needs</button></details>` : ''}
     <div class="err" id="rsErr"></div>
     ${tally}`;
   const save = async next => {
@@ -1009,6 +1133,9 @@ function renderRsvp(){
     try { await api('rsvp', next); await refresh(); } catch (e) { handleErr(e); refresh(); }
   };
   $('#seg').querySelectorAll('button').forEach(b => b.onclick = () => save({ ...cur, status:b.dataset.s, adults: cur.status ? cur.adults : 1 }));
+  $('#rsvpCard').querySelectorAll('[data-diet]').forEach(b => b.onclick = () => b.classList.toggle('on'));
+  $('#dietSave') && ($('#dietSave').onclick = () => save({ ...cur, diet: {
+    tags: [...$('#rsvpCard').querySelectorAll('[data-diet].on')].map(x => x.dataset.diet), note: $('#dietNote').value.trim() } }).then(() => toast('Dietary needs saved')));
   $('#rsvpCard').querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
     const k = b.dataset.k, v = Math.max(0, Math.min(30, cur[k] + +b.dataset.d));
     save({ ...cur, [k]: v });
@@ -1028,7 +1155,62 @@ function renderNeeds(){
   $('#needsCard').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => startForm(null, b.dataset.cat));
 }
 
+function dietSummary(){
+  const tags = {}, notes = [];
+  for (const [id, r] of Object.entries(S.rsvps || {})) {
+    if (!r.diet || !['yes', 'maybe'].includes(r.status) || !S.people.some(p => p.id === id)) continue;
+    for (const t of r.diet.tags || []) (tags[t] = tags[t] || []).push(personName(id));
+    if (r.diet.note) notes.push([personName(id), r.diet.note]);
+  }
+  return { tags, notes, any: Object.keys(tags).length || notes.length };
+}
+function renderDiet(){
+  const d = dietSummary(), el = $('#dietCard');
+  if (!d.any) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="diet-head">${ico('alert')}<b>Dietary heads-up for cooks</b></div>
+    <div class="diet-tags">${Object.entries(d.tags).map(([t, names]) => `<span class="diet-tag" title="${esc(names.join(', '))}"><b>${esc(t)}</b> ${names.length > 1 ? '×' + names.length + ' ' : ''}<span class="muted">${esc(names.join(', '))}</span></span>`).join('')}</div>
+    ${d.notes.map(([n, t]) => `<div class="diet-note"><b>${esc(n)}:</b> ${esc(t)}</div>`).join('')}`;
+}
+function renderHelp(){
+  const reqs = S.event.requests || [], el = $('#helpCard');
+  if (!reqs.length) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const open = reqs.filter(r => !S.claims[r.id]).length;
+  el.innerHTML = `<div class="cl-head"><h3 style="margin:0">Help wanted</h3><span class="count">${open ? open + ' open' : 'All claimed ✓'}</span></div>
+    <div class="help-list">${reqs.map(r => { const who = S.claims[r.id], mine = me && who === me.id;
+      return `<div class="help ${who ? 'taken' : ''}"><span class="help-text">${esc(r.text)}</span>${who
+        ? `<span class="help-who">✓ ${mine ? 'You' : esc(personName(who))}</span>${mine || adminPin ? `<button type="button" class="link" data-unclaim="${r.id}">Undo</button>` : ''}`
+        : `<button type="button" class="btn small" data-claim="${r.id}">I'll do it</button>`}</div>`; }).join('')}</div>`;
+  el.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
+    if (!me && !(await quickSignIn('to claim this'))) return;
+    try { await api('claim', { id: b.dataset.claim }); toast('Thank you!'); await refresh(); } catch (e) { handleErr(e); refresh(); }
+  });
+  el.querySelectorAll('[data-unclaim]').forEach(b => b.onclick = async () => {
+    try { await api('unclaim', { id: b.dataset.unclaim }); await refresh(); } catch (e) { handleErr(e); }
+  });
+}
+// A small sign-in box for actions outside the dish form (claiming a request).
+async function quickSignIn(why){
+  signinDraft.needPin = false;
+  const ok = await modal({
+    title: 'First, who are you?',
+    html: `<p class="muted" style="margin-top:0">Sign in ${esc(why)}. Just your name, and this device will remember you.</p>${signinFields('qs')}`,
+    actions: [{label:'Cancel',kind:'ghost',value:null},{label:'Continue',value:'go',primary:true}],
+    validate: async box => {
+      try { await signInFrom('qs'); return true; }
+      catch (e) {
+        if (signinDraft.needPin) { const w = box.querySelector('#qsPin').closest('div'); w.classList.remove('hidden'); box.querySelector('#qsPin').focus(); }
+        throw e;
+      }
+    },
+  });
+  if (ok) render();
+  return !!ok;
+}
+
 function renderDishes(){
+  renderHelp(); renderDiet();
   const c = counts(), targets = S.event.targets || {};
   const total = S.dishes.length, people = new Set(S.dishes.map(d => d.personId)).size;
   $('#menuSub').textContent = total ? `${total} dish${total===1?'':'es'} from ${people} ${people===1?'person':'people'} so far.` : 'Nothing signed up yet.';
@@ -1056,6 +1238,7 @@ function dishRow(d){
     <div class="name">${esc(d.name)}</div>
     <div class="by">${mine ? 'You' : esc(personName(d.personId))}${d.serves ? ` · serves ${esc(d.serves)}` : ''}</div>
     ${d.note ? `<div class="note">${esc(d.note)}</div>` : ''}
+    ${d.recipe && /^https?:\/\//i.test(d.recipe) ? `<a class="recipe" href="${esc(d.recipe)}" target="_blank" rel="noopener nofollow">${ico('book')}Recipe</a>` : ''}
     ${d.tags && d.tags.length ? `<div class="tags">${d.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
     </div>${can ? `<div class="acts"><button type="button" class="icon-btn" data-edit="${d.id}" aria-label="Edit">${ico('edit')}</button><button type="button" class="icon-btn" data-del="${d.id}" aria-label="Remove">${ico('trash')}</button></div>` : ''}</div>`;
 }
@@ -1090,7 +1273,7 @@ function ideasFor(cat){
 
 /* ======================= Inline dish form ======================= */
 function startForm(dish, cat){
-  form = dish ? { id: dish.id, name: dish.name, cat: dish.cat, tags: [...(dish.tags||[])], serves: dish.serves||'', note: dish.note||'' }
+  form = dish ? { id: dish.id, name: dish.name, cat: dish.cat, tags: [...(dish.tags||[])], serves: dish.serves||'', note: dish.note||'', recipe: dish.recipe||'' }
               : { ...(form && !form.id ? form : { name:'', tags:[], serves:'', note:'' }), id: undefined, cat: cat || (form && !form.id && form.cat) || 'side' };
   renderForm();
   $('#bring').scrollIntoView();
@@ -1109,15 +1292,17 @@ function renderForm(){
     <div class="sugg" id="dSugg"></div>
     <div style="margin-top:18px"><label class="f">Category</label><div class="choices" id="dCats">${S.categories.map(c => `<button type="button" class="choice ${c.id===f.cat?'on':''}" data-c="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>
     <div style="margin-top:18px"><label class="f">Good to know <span class="muted" style="font-weight:400">(optional)</span></label><div class="choices" id="dTags">${S.tags.map(t => `<button type="button" class="choice ${f.tags.includes(t)?'on':''}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>
-    <div style="margin-top:18px"><label class="f" for="dNote">Note <span class="muted" style="font-weight:400">(optional)</span></label><input class="input" id="dNote" maxlength="200" value="${esc(f.note)}" placeholder="Needs oven time, bringing a serving spoon…"></div>
+    <div class="form-grid" style="margin-top:18px;grid-template-columns:1fr 1fr">
+      <div><label class="f" for="dNote">Note <span class="muted" style="font-weight:400">(optional)</span></label><input class="input" id="dNote" maxlength="200" value="${esc(f.note)}" placeholder="Needs oven time, bringing a spoon…"></div>
+      <div><label class="f" for="dRecipe">Recipe link <span class="muted" style="font-weight:400">(optional)</span></label><input class="input" id="dRecipe" maxlength="300" inputmode="url" value="${esc(f.recipe || '')}" placeholder="https://…"></div></div>
     <div class="err" id="fErr"></div>
     <div class="form-actions">${f.id ? '<button type="button" class="btn ghost" id="fCancel2">Cancel</button>' : ''}<button class="btn" id="fSubmit">${f.id ? 'Save changes' : 'Add to the menu'}</button></div>`;
-  const sync = () => { f.name = $('#dName').value; f.serves = $('#dServes').value; f.note = $('#dNote').value; };
+  const sync = () => { f.name = $('#dName').value; f.serves = $('#dServes').value; f.note = $('#dNote').value; f.recipe = $('#dRecipe').value; };
   $('#dishForm').querySelectorAll('input').forEach(i => i.addEventListener('input', sync));
   const renderSugg = () => {
     const list = f.id ? [] : ideasFor(f.cat);
     $('#dSugg').innerHTML = list.length ? `<span class="sugg-label">Ideas:</span>${list.map(n => `<button type="button" class="sugg-chip" data-idea="${esc(n)}">${esc(n)}</button>`).join('')}` : '';
-    $('#dSugg').querySelectorAll('[data-idea]').forEach(b => b.onclick = () => { $('#dName').value = f.name = b.dataset.idea; $('#dName').focus(); });
+    $('#dSugg').querySelectorAll('[data-idea]').forEach(b => b.onclick = () => { $('#dName').value = f.name = b.textContent.trim(); $('#dName').focus(); });
   };
   renderSugg();
   $('#dishForm').querySelectorAll('[data-c]').forEach(b => b.onclick = () => { f.cat = b.dataset.c; $('#dishForm').querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b)); renderSugg(); });
@@ -1129,7 +1314,7 @@ function renderForm(){
 $('#dishForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = form, btn = $('#fSubmit'); $('#fErr').textContent = '';
-  f.name = $('#dName').value.trim(); f.serves = $('#dServes').value.trim(); f.note = $('#dNote').value.trim();
+  f.name = $('#dName').value.trim(); f.serves = $('#dServes').value.trim(); f.note = $('#dNote').value.trim(); f.recipe = $('#dRecipe').value.trim();
   if (!f.name) { $('#fErr').textContent = 'Give your dish a name.'; return; }
   btn.disabled = true;
   try {
@@ -1143,7 +1328,7 @@ $('#dishForm').addEventListener('submit', async e => {
       const who = me && dup.personId === me.id ? 'You’re' : esc(personName(dup.personId)) + ' is';
       if (!(await confirmBox('Already on the menu', `${who} already bringing <b>${esc(dup.name)}</b>. Add yours anyway?`, 'Add anyway'))) { btn.disabled = false; render(); return; }
     }
-    await api('saveDish', { id: f.id, name: f.name, cat: f.cat, tags: f.tags, serves: f.serves, note: f.note });
+    await api('saveDish', { id: f.id, name: f.name, cat: f.cat, tags: f.tags, serves: f.serves, note: f.note, recipe: f.recipe });
     toast(f.id ? 'Changes saved' : 'Added to the menu. Thank you!');
     form = null; document.activeElement && document.activeElement.blur();
     await refresh();
@@ -1201,6 +1386,14 @@ function wirePresets(box){
     box.querySelectorAll('[data-target]').forEach(i => i.value = t[i.dataset.target] || '');
     box.querySelectorAll('[data-preset]').forEach(x => x.classList.toggle('on', x === b));
   });
+}
+const requestsEditor = reqs => `<label class="f" for="reqText" style="margin-top:18px">Anything specific? <span class="muted" style="font-weight:400">(optional)</span></label>
+  <textarea class="input" id="reqText" rows="4" placeholder="One per line, for example:&#10;Big cooler&#10;Folding chairs&#10;Someone to carve the turkey&#10;Cleanup crew">${esc((reqs || []).map(r => r.text).join('\n'))}</textarea>
+  <div class="hint">Each line becomes a “Help wanted” item that one person can claim.</div>`;
+function readRequests(box){
+  const old = S.event.requests || [];
+  return box.querySelector('#reqText').value.split('\n').map(t => t.trim()).filter(Boolean).slice(0, 30)
+    .map(text => { const o = old.find(r => r.text.toLowerCase() === text.toLowerCase()); return o ? { id: o.id, text } : { text }; });
 }
 const readTargets = box => { const t = {}; box.querySelectorAll('[data-target]').forEach(i => t[i.dataset.target] = i.value); return t; };
 const markInvited = () => store.set('pl_invited:' + S.group.code, true);
@@ -1285,12 +1478,13 @@ async function wizard(start = 0){
       res = await modal({ wide: true, title: '',
         html: head(2, 'What do you need people to bring?') +
           `<p class="muted" style="margin-top:0">Pick a starting point, then adjust. Guests see what’s still needed, so you don’t end up with five pies.</p>
-          ${presetButtons()}${targetInputs(ev.targets)}<div class="hint">Leave a category blank if you don’t need a set number.</div>`,
+          ${presetButtons()}${targetInputs(ev.targets)}<div class="hint">Leave a category blank if you don’t need a set number.</div>
+          ${requestsEditor(ev.requests)}`,
         actions: [{label:'Back',kind:'ghost',value:'back'},{label:'Next',value:'next',primary:true}],
         onOpen: wirePresets,
         validate: async (box, v) => {
           if (v === 'back') return 'back';
-          await api('setEvent', { ...S.event, targets: readTargets(box) });
+          await api('setEvent', { ...S.event, targets: readTargets(box), requests: readRequests(box) });
           S = await api('state'); render();
           return 'next';
         },
@@ -1323,7 +1517,7 @@ function setupState(){
   const ev = S.event;
   return {
     when: !!(S.eventSaved && (ev.location || ev.time)),
-    needs: Object.keys(ev.targets || {}).length > 0,
+    needs: Object.keys(ev.targets || {}).length > 0 || (ev.requests || []).length > 0,
     invited: S.people.length > 1 || !!store.get('pl_invited:' + S.group.code),
   };
 }
@@ -1377,6 +1571,7 @@ async function organizer(tab = 'event'){
         <p class="muted" style="margin-top:0">Guests see a “Still needed” list based on these numbers.</p>
         ${presetButtons()}${targetInputs(ev.targets)}
         <div class="hint">Leave a category blank if you don't need a set number.</div>
+        ${requestsEditor(ev.requests)}
       </div>
 
       <div class="pane" data-pane="people">
@@ -1396,6 +1591,8 @@ async function organizer(tab = 'event'){
             <div class="hint">4 to 20 characters.</div></div></div>
         <div class="section-title">Delete this group</div>
         <div class="danger-zone"><span class="muted" style="font-size:.9rem">Permanently removes this group and every holiday's menu, RSVPs and people.</span><button class="btn danger small" type="button" id="oDelete">Delete group</button></div>`}
+        ${S.emailEnabled ? `<label class="f" for="oOrgEmail" style="margin-top:16px">Email me when someone signs up a dish</label>
+          <input class="input" id="oOrgEmail" type="email" maxlength="254" placeholder="you@example.com (leave blank for no emails)">` : ''}
         <div style="margin-top:18px"><button class="link" id="oOut" type="button">Leave organizer mode on this device</button></div>
       </div>`,
     actions: [{label:'Close',kind:'ghost',value:null},{label:'Save',value:'save',primary:true}],
@@ -1418,6 +1615,8 @@ async function organizer(tab = 'event'){
       };
       box.querySelector('#oHol').onchange = prev; box.querySelector('#oFresh').onchange = prev; prev();
       box.querySelector('#oWizard').onclick = () => { close(null); wizard(0); };
+      const oe = box.querySelector('#oOrgEmail');
+      if (oe) api('orgInfo').then(r => { oe.value = r.orgEmail; oe.dataset.was = r.orgEmail; }).catch(() => {});
       box.querySelector('#oCopy').onclick = () => { copyText(shareLink()); markInvited(); };
       box.querySelector('#oLink').onfocus = e => e.target.select();
       const cl = box.querySelector('#oCopyLast');
@@ -1466,9 +1665,11 @@ async function organizer(tab = 'event'){
         title: box.querySelector('#oTitle').value, time: box.querySelector('#oTime').value,
         dateOverride: dateVal && dateVal !== h.date ? dateVal : '',
         location: box.querySelector('#oLoc').value, host: box.querySelector('#oHost').value,
-        notes: box.querySelector('#oNotes').value, targets: readTargets(box),
+        notes: box.querySelector('#oNotes').value, targets: readTargets(box), requests: readRequests(box),
       });
       await api('setHoliday', v === 'auto' ? { mode:'auto', siteName } : { mode:'fixed', holiday:v, newCustom: box.querySelector('#oFresh').checked, siteName });
+      const oe = box.querySelector('#oOrgEmail');
+      if (oe && oe.value.trim() !== (oe.dataset.was || '')) { await api('setOrgEmail', { email: oe.value.trim() }); oe.dataset.was = oe.value.trim(); }
       if (!S.group.legacy) {
         const newPin = box.querySelector('#oNewPin').value.trim();
         if (newPin) {
@@ -1496,21 +1697,24 @@ async function organizer(tab = 'event'){
 /* ======================= Your account (guest) ======================= */
 async function account(){
   const hasPin = me.hasPin || !!me.pin;
+  let email = '';
+  if (S.emailEnabled) { try { email = (await api('myInfo')).email; } catch (e) { return handleErr(e); } }
   const r = await modal({
     title: `Hi, ${me.name}`,
-    html: `<p class="muted" style="margin-top:0">${hasPin
-        ? 'You have a PIN. Use it with your name to sign in on another phone or computer.'
-        : 'This device remembers you. To sign in as yourself on another phone or computer, set a 4-digit PIN.'}</p>
-      <label class="f" for="acPin">${hasPin ? 'Change your PIN' : 'Set a PIN'}</label>
-      <input class="input" id="acPin" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:.3em;max-width:160px">`,
-    actions: [{label:'Sign out',kind:'ghost',value:'out'},{label:'Close',kind:'ghost',value:null},{label:'Save PIN',value:'pin',primary:true}],
+    html: `<label class="f" for="acPin">${hasPin ? 'Change your PIN' : 'Set a PIN'} <span class="muted" style="font-weight:400">(optional)</span></label>
+      <p class="hint" style="margin:0 0 8px">${hasPin ? 'Use your PIN with your name to sign in on another phone or computer.' : 'This device remembers you. A 4-digit PIN lets you sign in as yourself on another phone or computer.'}</p>
+      <input class="input" id="acPin" inputmode="numeric" maxlength="4" placeholder="••••" style="letter-spacing:.3em;max-width:160px">
+      ${S.emailEnabled ? `<label class="f" for="acEmail" style="margin-top:18px">Remind me the day before <span class="muted" style="font-weight:400">(optional)</span></label>
+      <p class="hint" style="margin:0 0 8px">We'll email you what you signed up to bring. Only you and the site can see this address.</p>
+      <input class="input" id="acEmail" type="email" maxlength="254" value="${esc(email)}" placeholder="you@example.com">` : ''}`,
+    actions: [{label:'Sign out',kind:'ghost',value:'out'},{label:'Close',kind:'ghost',value:null},{label:'Save',value:'save',primary:true}],
     validate: async (box, v) => {
       if (v === 'out') return 'out';
-      const pin = box.querySelector('#acPin').value.trim();
-      if (!/^\d{4}$/.test(pin)) throw new Error('Your PIN should be 4 digits.');
-      await api('setPin', { newPin: pin });
-      saveMe({ ...me, hasPin: true, pin: me.token ? undefined : pin });
-      toast('PIN saved'); return 'pin';
+      const pin = box.querySelector('#acPin').value.trim(), em = box.querySelector('#acEmail');
+      if (pin && !/^\d{4}$/.test(pin)) throw new Error('Your PIN should be 4 digits.');
+      if (pin) { await api('setPin', { newPin: pin }); saveMe({ ...me, hasPin: true, pin: me.token ? undefined : pin }); }
+      if (em && em.value.trim() !== email) await api('setMyEmail', { email: em.value.trim() });
+      toast('Saved'); return 'save';
     },
   });
   if (r === 'out') {
@@ -1581,11 +1785,103 @@ function buildPrintView(){
       const list = S.dishes.filter(d => d.cat === cat.id), open = Math.max(0, (targets[cat.id] || 0) - list.length);
       return `<div class="pv-cat"><h2>${esc(cat.name)}</h2><ul>${list.map(d => `<li><span class="pv-box"></span><b>${esc(d.name)}</b> <span>${esc(personName(d.personId))}${d.serves ? ' · serves ' + esc(d.serves) : ''}${d.tags && d.tags.length ? ' · ' + d.tags.map(esc).join(', ') : ''}</span></li>`).join('')}
         ${Array.from({ length: open }, () => `<li class="pv-open"><span class="pv-box"></span>Still needed</li>`).join('')}</ul></div>`; }).join('') || '<p>Nothing signed up yet.</p>'}</div>
+    ${(ev.requests || []).length ? `<div class="pv-cat"><h2>Help wanted</h2><ul>${ev.requests.map(r => `<li><span class="pv-box"></span><b>${esc(r.text)}</b> <span>${S.claims[r.id] ? esc(personName(S.claims[r.id])) : 'Open'}</span></li>`).join('')}</ul></div>` : ''}
     ${ev.notes ? `<p class="pv-notes">${esc(ev.notes)}</p>` : ''}
     <div class="pv-foot">Sign up at ${esc(location.host)} with code ${esc(S.group.code)}</div>`;
 }
 function printMenu(){ buildPrintView(); window.print(); }
 window.addEventListener('beforeprint', buildPrintView);
+
+/* ======================= Owner dashboard (#owner, master PIN) ======================= */
+let ownerData = null;
+async function ownerOpen(){
+  let pin = sess.get('pl_owner');
+  if (!pin) {
+    pin = await modal({
+      title: 'Site owner',
+      html: `<p class="muted" style="margin-top:0">Enter the master PIN (ADMIN_PIN in Vercel).</p><input class="input" id="owPin" type="password" autocomplete="off">`,
+      actions: [{label:'Cancel',kind:'ghost',value:null},{label:'Open dashboard',value:'go',primary:true}],
+      validate: async box => { const p = box.querySelector('#owPin').value.trim(); ownerData = await api('ownerList', { ownerPin: p }); return p; },
+    });
+    if (!pin) { history.replaceState(null, '', location.pathname); return false; }
+    sess.set('pl_owner', pin);
+  } else {
+    try { ownerData = await api('ownerList', { ownerPin: pin }); }
+    catch (e) { sess.set('pl_owner', null); return ownerOpen(); }
+  }
+  showOwner(); return true;
+}
+function showOwner(){
+  S = null; document.body.classList.add('landing');
+  ['#loading','#gate','#site'].forEach(x => $(x).classList.add('hidden'));
+  $('#ownerView').classList.remove('hidden'); $('#navlinks').classList.add('hidden');
+  $('#navright').innerHTML = '<button type="button" class="btn small ghost" id="ownerExit">Exit dashboard</button>';
+  $('#ownerExit').onclick = () => { sess.set('pl_owner', null); history.replaceState(null, '', location.pathname); $('#ownerView').classList.add('hidden'); family ? load() : showGate(); };
+  renderOwner();
+}
+const ago = t => { if (!t) return '–'; const d = Math.floor((Date.now() - t) / 864e5); return d < 1 ? 'Today' : d === 1 ? 'Yesterday' : d < 60 ? d + ' days ago' : Math.round(d / 30) + ' months ago'; };
+function renderOwner(filter = ''){
+  const D = ownerData, q = filter.toLowerCase();
+  const list = D.groups.filter(g => !q || (g.name + ' ' + g.code).toLowerCase().includes(q)).sort((a, b) => (b.last || b.created || 0) - (a.last || a.created || 0));
+  const people = D.groups.reduce((n, g) => n + g.people, 0);
+  const active30 = D.groups.filter(g => g.last && Date.now() - g.last < 30 * 864e5).length;
+  $('#ownerBody').innerHTML = `<div class="section-head"><div><h2>Owner dashboard</h2><p class="muted">Every potluck group on the site. Only you can see this page.</p></div>
+      <button type="button" class="btn small ghost" id="owRefresh">Refresh</button></div>
+    <div class="ow-stats">
+      <div class="card"><b>${D.groups.length}</b><span>groups (limit ${D.maxGroups})</span></div>
+      <div class="card"><b>${people}</b><span>people signed in</span></div>
+      <div class="card"><b>${active30}</b><span>active in the last 30 days</span></div>
+      <div class="card"><b>${D.emailEnabled ? 'On' : 'Off'}</b><span>email reminders</span></div></div>
+    <div class="card ow-tools">
+      <input class="input" id="owSearch" placeholder="Search groups by name or code" value="${esc(filter)}">
+      <div class="row" style="flex-wrap:wrap"><span>Remove groups inactive for</span><input class="input" id="owDays" type="number" min="30" value="${D.inactiveDays || 365}" style="width:90px"><span>days</span>
+        <button type="button" class="btn small danger" id="owClean">Clean up…</button></div>
+      <div class="hint">${D.inactiveDays ? `The daily job also removes groups after ${D.inactiveDays} days with no activity.` : 'Automatic cleanup is off (INACTIVE_DAYS=0).'}</div></div>
+    <div class="card ow-table-wrap"><table class="ow-table"><thead><tr><th>Group</th><th>People</th><th>Created</th><th>Last active</th><th></th></tr></thead><tbody>
+      ${list.map(g => `<tr><td><b>${esc(g.name)}</b><div class="muted">${esc(g.code)}${g.legacy ? ' · original group' : ''}</div></td><td>${g.people}</td>
+        <td>${g.created ? new Date(g.created).toLocaleDateString() : '–'}</td><td>${ago(g.last)}</td>
+        <td class="ow-acts"><button type="button" class="btn small quiet" data-ow-open="${esc(g.code)}">Open</button>${g.legacy ? '' : `<button type="button" class="btn small ghost" data-ow-del="${esc(g.id)}">Delete</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">No groups match.</td></tr>'}
+    </tbody></table></div>`;
+  $('#owSearch').oninput = e => { const pos = e.target.selectionStart; renderOwner(e.target.value); const el = $('#owSearch'); el.focus(); el.setSelectionRange(pos, pos); };
+  $('#owRefresh').onclick = async () => { ownerData = await api('ownerList', { ownerPin: sess.get('pl_owner') }); renderOwner(filter); toast('Refreshed'); };
+  $('#owClean').onclick = async () => {
+    const days = Math.max(30, +$('#owDays').value || 365);
+    const n = D.groups.filter(g => !g.legacy && Date.now() - (g.last || g.created || Date.now()) > days * 864e5).length;
+    if (!n) return alertBox('Nothing to clean up', `No groups have been inactive for ${days} days.`);
+    if (!(await confirmBox(`Remove ${n} inactive group${n === 1 ? '' : 's'}?`, `Groups with no activity for ${days}+ days will be permanently deleted, along with their menus and people.`, 'Remove them', 'danger'))) return;
+    try { const r = await api('ownerCleanup', { ownerPin: sess.get('pl_owner'), days }); toast(`Removed ${r.removed}`); ownerData = await api('ownerList', { ownerPin: sess.get('pl_owner') }); renderOwner(); } catch (e) { handleErr(e); }
+  };
+  document.querySelectorAll('[data-ow-open]').forEach(b => b.onclick = async () => {
+    const pin = sess.get('pl_owner'); history.replaceState(null, '', location.pathname);
+    $('#ownerView').classList.add('hidden'); family = b.dataset.owOpen;
+    if (await load(true)) { saveAdmin(pin); render(); toast('Opened as organizer'); }
+  });
+  document.querySelectorAll('[data-ow-del]').forEach(b => b.onclick = async () => {
+    const g = D.groups.find(x => x.id === b.dataset.owDel);
+    if (!(await confirmBox(`Delete ${esc(g.name)}?`, `This permanently removes the group <b>${esc(g.code)}</b> with ${g.people} ${g.people === 1 ? 'person' : 'people'} and all its menus.`, 'Delete group', 'danger'))) return;
+    try { await api('ownerDelete', { ownerPin: sess.get('pl_owner'), id: g.id }); forgetGroup(g.code); D.groups = D.groups.filter(x => x.id !== g.id); renderOwner(filter); toast('Group deleted'); } catch (e) { handleErr(e); }
+  });
+}
+window.addEventListener('hashchange', () => { if (location.hash === '#owner') ownerOpen(); });
+
+/* ======================= Install as an app ======================= */
+let installPrompt = null;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; });
+window.addEventListener('appinstalled', () => { installPrompt = null; $('#installBtn').classList.add('hidden'); toast('Installed! Look for Potluck on your home screen.'); });
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+if (standalone()) $('#installBtn').classList.add('hidden');
+$('#installBtn').onclick = async () => {
+  if (installPrompt) { installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  await modal({
+    title: 'Add Potluck to your home screen',
+    html: ios
+      ? `<ol class="steps-list"><li>Tap the <b>Share</b> button at the bottom of Safari (the square with an arrow).</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. Potluck now opens like an app.</li></ol>`
+      : `<ol class="steps-list"><li>Open your browser's menu (⋮ or ⋯).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm. Potluck now opens like an app.</li></ol>`,
+    actions: [{label:'Got it',value:true,primary:true}],
+  });
+};
 
 /* ======================= Your groups (front page) ======================= */
 function rememberGroup(){
@@ -1603,6 +1899,37 @@ function renderYourGroups(){
       <span><b>${esc(g.name)}</b><small>${esc(g.title)}</small></span></button><button type="button" class="yg-x" data-forget="${esc(g.code)}" aria-label="Remove ${esc(g.name)} from this list">×</button></div>`; }).join('')}</div>`;
   el.querySelectorAll('[data-open]').forEach(b => b.onclick = async () => { family = b.dataset.open; if (!(await load(true))) { forgetGroup(b.dataset.open); renderYourGroups(); } });
   el.querySelectorAll('[data-forget]').forEach(b => b.onclick = () => { forgetGroup(b.dataset.forget); renderYourGroups(); });
+}
+
+/* ======================= Translation layer =======================
+   The page is written in English. In Spanish mode every piece of text the page shows
+   (including pop-ups and messages from the server) is swapped for its translation as
+   it appears. People's own words (names, dishes, notes) aren't in the list, so they
+   stay as typed. */
+function trText(str){
+  const t = str.trim();
+  if (!t) return null;
+  let out = ES[t];
+  if (out === undefined) for (const [re, f] of ES_PATTERNS) { const m = t.match(re); if (m && (out = f(m)) !== undefined) break; }
+  return out === undefined ? null : str.replace(t, out);
+}
+function trTree(root){
+  if (root.nodeType === 3) { const r = trText(root.nodeValue); if (r !== null && r !== root.nodeValue) root.nodeValue = r; return; }
+  if (root.nodeType !== 1 || root.closest('script,style,[data-nt]')) return;
+  const els = [root, ...root.querySelectorAll('[placeholder],[aria-label]')];
+  for (const el of els) for (const a of ['placeholder', 'aria-label']) if (el.hasAttribute && el.hasAttribute(a)) { const r = trText(el.getAttribute(a)); if (r !== null) el.setAttribute(a, r); }
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) { const n = w.currentNode; if (n.parentElement.closest('script,style,[data-nt]')) continue; const r = trText(n.nodeValue); if (r !== null && r !== n.nodeValue) n.nodeValue = r; }
+}
+function setLang(l){ store.set('pl_lang', l); location.reload(); }
+document.querySelectorAll('[data-lang]').forEach(b => { b.classList.toggle('on', b.dataset.lang === LANG); b.onclick = () => b.dataset.lang !== LANG && setLang(b.dataset.lang); });
+if (LANG === 'es') {
+  document.documentElement.lang = 'es';
+  trTree(document.body);
+  new MutationObserver(ms => { for (const m of ms) {
+    if (m.type === 'characterData') trTree(m.target);
+    else m.addedNodes.forEach(trTree);
+  } }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 
 boot();
