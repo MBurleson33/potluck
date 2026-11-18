@@ -1,12 +1,12 @@
 // Holiday Potluck API — one Vercel serverless function.
 // Storage: Upstash Redis REST (shares an existing Vercel → Storage → Upstash database).
-// Env vars: FAMILY_CODE, ADMIN_PIN, KV_REST_API_URL / KV_REST_API_TOKEN (Vercel adds these
+// Env vars: GROUP_CODE (FAMILY_CODE also works), ADMIN_PIN, KV_REST_API_URL / KV_REST_API_TOKEN (Vercel adds these
 // when you connect the database), optional KEY_PREFIX (default "pl:") and TIMEZONE.
 const crypto = require('crypto');
 
 const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const DB_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const FAMILY = (process.env.FAMILY_CODE || '').trim().toLowerCase();
+const FAMILY = (process.env.GROUP_CODE || process.env.FAMILY_CODE || '').trim().toLowerCase();
 const ADMIN = (process.env.ADMIN_PIN || '').trim();
 const P = process.env.KEY_PREFIX || 'pl:';
 const TZ = process.env.TIMEZONE || 'America/Chicago';
@@ -124,7 +124,7 @@ const clean = (s, max) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim()
 const cleanNote = (s, max) => String(s == null ? '' : s).replace(/\r/g, '').trim().slice(0, max);
 const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
 
-const DEFAULT_SETTINGS = { mode: 'auto', holiday: 'thanksgiving', siteName: 'Family Potluck' };
+const DEFAULT_SETTINGS = { mode: 'auto', holiday: 'thanksgiving', siteName: 'Holiday Potluck' };
 const DEFAULT_EVENT = { title: '', dateOverride: '', time: '', location: '', host: '', notes: '', targets: {} };
 
 async function loadSettings() {
@@ -185,7 +185,7 @@ function dishFrom(b, existing) {
 
 /* ---------- Actions ---------- */
 const actions = {
-  // No family code needed: just enough to theme the sign-in screen.
+  // No group code needed: just enough to theme the sign-in screen.
   async peek() {
     const settings = await loadSettings();
     const hol = activeHoliday(settings);
@@ -318,7 +318,7 @@ module.exports = async (req, res) => {
   try {
     if (req.method !== 'POST') fail(405, 'Use POST.');
     if (!DB_URL || !DB_TOKEN) fail(500, 'The database isn\'t connected yet. Connect Upstash in Vercel → Storage.');
-    if (!FAMILY) fail(500, 'FAMILY_CODE isn\'t set in Vercel yet.');
+    if (!FAMILY) fail(500, 'GROUP_CODE isn\'t set in Vercel yet.');
     let b = req.body;
     if (typeof b === 'string') b = parse(b, {});
     b = b || {};
@@ -326,7 +326,7 @@ module.exports = async (req, res) => {
     if (!fn) fail(400, 'Unknown action.');
     if (b.action !== 'peek') {
       const code = String(b.family || '').trim().toLowerCase();
-      if (!code || !safeEq(code, FAMILY)) fail(401, 'That family code isn\'t right.');
+      if (!code || !safeEq(code, FAMILY)) fail(401, 'That group code isn\'t right.');
     }
     res.status(200).json(await fn(b));
   } catch (e) {

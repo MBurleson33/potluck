@@ -1,11 +1,11 @@
 # Holiday Potluck
 
-Family members sign in and say what food they're bringing to holiday gatherings. The organizer picks the holiday, and the whole site changes its colors, icon and list to match. Each holiday keeps its own list.
+People sign in and say what food they're bringing to holiday gatherings. The organizer picks the holiday, and the whole site changes its colors, icon and list to match. Each holiday keeps its own list.
 
 **Holidays:** New Year's Day, Valentine's Day, Easter, Memorial Day, Fourth of July, Labor Day, Halloween, Thanksgiving, Christmas, and a "Special gathering" for birthdays or anything else. **Automatic** mode always shows the next holiday coming up, and it switches over the day after each one.
 
 ## Features
-- A shared family code to get in. There are no accounts. Each person picks a name and a 4-digit PIN so only they can change their own dishes. Five wrong PINs locks that name for 10 minutes.
+- A shared group code to get in, so it works for a family, friends, a church group or an office. There are no accounts. Each person picks a name and a 4-digit PIN so only they can change their own dishes. Five wrong PINs locks that name for 10 minutes.
 - Dishes are sorted into categories like mains, sides and desserts, with dietary tags, a "serves" amount and a note.
 - If someone adds a dish that's already on the list, the site warns them first.
 - RSVPs with adult and kid counts, plus a running headcount.
@@ -18,7 +18,8 @@ Family members sign in and say what food they're bringing to holiday gatherings.
 1. Push this folder to a GitHub repo and import it in Vercel. No build settings are needed.
 2. **Database:** in Vercel → **Storage**, open your existing Upstash Redis database, click **Connect Project**, and choose this project. It shares the database with Secret Santa safely, because this site's keys start with `pl:` and Secret Santa's start with `ss:`.
 3. In the project → **Settings → Environment Variables**, add:
-   - `FAMILY_CODE`: what people type to get in.
+   - `GROUP_CODE`: what people type to get in. `FAMILY_CODE` also works.
+   - Change the site name any time in organizer settings, e.g. "Burleson Family Potluck" or "Office Potluck."
    - `ADMIN_PIN`: your organizer password.
    - Optional: `KEY_PREFIX` (default `pl:`) and `TIMEZONE` (default `America/Chicago`).
 4. **Redeploy** so the variables take effect.
