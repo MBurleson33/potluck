@@ -35,6 +35,7 @@ const K = g => ({
   settings: g.prefix + 'settings',
   people: g.prefix + 'people',
   pins: g.prefix + 'pins',
+  tokens: g.prefix + 'tokens',     // hash: personId -> [hashes of device sign-in tokens]
   fails: id => g.prefix + 'fail:' + id,
   event: ev => g.prefix + 'ev:' + ev,
   dishes: ev => g.prefix + 'dish:' + ev,
@@ -121,8 +122,8 @@ function activeHoliday(settings, now = today()) {
 
 
 /* ---------- Helpers ---------- */
-class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
-const fail = (status, msg) => { throw new HttpError(status, msg); };
+class HttpError extends Error { constructor(status, msg, code) { super(msg); this.status = status; this.code = code; } }
+const fail = (status, msg, code) => { throw new HttpError(status, msg, code); };
 
 async function redis(cmds) {
   const r = await fetch(DB_URL.replace(/\/$/, '') + '/pipeline', {
@@ -200,10 +201,12 @@ async function fullState(g, settings) {
   const now = today();
   const hol = activeHoliday(settings, now);
   const ev = hol.key, k = K(g);
-  const [people, pins, event, dishes, rsvp] = await redis([
+  const prevKey = hol.id === 'custom' ? null : `${hol.id}-${hol.year - 1}`;
+  const [people, pins, event, dishes, rsvp, prev] = await redis([
     ['HGETALL', k.people], ['HKEYS', k.pins], ['GET', k.event(ev)],
-    ['HGETALL', k.dishes(ev)], ['HGETALL', k.rsvp(ev)],
+    ['HGETALL', k.dishes(ev)], ['HGETALL', k.rsvp(ev)], ['GET', prevKey ? k.event(prevKey) : k.event('none')],
   ]);
+  const prevEvent = parse(prev, null);
   const pinSet = new Set(pins || []);
   const ppl = Object.values(pairs(people)).map(p => parse(p, null)).filter(Boolean)
     .map(p => ({ id: p.id, name: p.name, hasPin: pinSet.has(p.id) }))
@@ -217,20 +220,40 @@ async function fullState(g, settings) {
     categories: CATEGORIES,
     tags: TAGS,
     event: { ...DEFAULT_EVENT, ...parse(event, {}) },
+    eventSaved: !!event,
+    // Last year's setup for this holiday, offered to the organizer when this year's is blank.
+    lastYear: !event && prevEvent ? { year: hol.year - 1, ...prevEvent } : null,
     people: ppl,
     dishes: Object.values(pairs(dishes)).map(d => parse(d, null)).filter(Boolean).sort((a, b) => a.ts - b.ts),
     rsvps: Object.fromEntries(Object.entries(pairs(rsvp)).map(([k, v]) => [k, parse(v, {})])),
   };
 }
 
-async function checkPerson(g, personId, pin) {
+const tokenHash = (g, tok) => sha(g.salt + ':tok:' + tok);
+async function issueToken(g, personId) {
+  const k = K(g), tok = crypto.randomBytes(18).toString('base64url');
+  const [raw] = await redis([['HGET', k.tokens, personId]]);
+  const list = parse(raw, []).slice(-9);
+  list.push(tokenHash(g, tok));
+  await redis([['HSET', k.tokens, personId, JSON.stringify(list)]]);
+  return tok;
+}
+// A person proves who they are with this device's sign-in token, or with their PIN.
+async function checkPerson(g, personId, pin, token) {
   const k = K(g);
-  if (!personId || !/^\d{4}$/.test(String(pin || ''))) fail(401, 'Please sign in again.');
+  if (!personId) fail(401, 'Please sign in again.', 'signin');
+  if (token) {
+    const [raw] = await redis([['HGET', k.tokens, personId]]);
+    const h = tokenHash(g, String(token));
+    if (parse(raw, []).some(x => safeEq(x, h))) return;
+    if (!pin) fail(401, 'Please sign in again.', 'signin');
+  }
+  if (!/^\d{4}$/.test(String(pin || ''))) fail(401, 'Please sign in again.', 'signin');
   const [stored, fails] = await redis([['HGET', k.pins, personId], ['GET', k.fails(personId)]]);
   if (Number(fails) >= 5) fail(429, 'Too many wrong PINs. Try again in 10 minutes, or ask the organizer to reset your PIN.');
   if (!stored || !safeEq(stored, pinHash(g, personId, pin))) {
     await redis([['INCR', k.fails(personId)], ['EXPIRE', k.fails(personId), 600]]);
-    fail(401, 'That PIN doesn\'t match.');
+    fail(401, 'That PIN doesn\'t match.', 'bad_pin');
   }
 }
 function isAdmin(g, pin) {
@@ -290,35 +313,63 @@ const open = {
 const actions = {
   async state(g) { return fullState(g, await loadSettings(g)); },
 
+  // Sign in with just a name. This device gets a token so it stays signed in.
+  // A PIN is only needed to sign in as the same person on another device.
   async signin(g, b) {
     const k = K(g);
     const name = clean(b.name, 40);
-    const pin = String(b.pin || '');
+    const pin = String(b.pin || '').trim();
     if (!name) fail(400, 'Enter your name.');
-    if (!/^\d{4}$/.test(pin)) fail(400, 'Your PIN should be 4 digits.');
-    const [people] = await redis([['HGETALL', k.people]]);
+    if (pin && !/^\d{4}$/.test(pin)) fail(400, 'Your PIN should be 4 digits.');
+    const [people, tokens] = await redis([['HGETALL', k.people], ['HKEYS', k.tokens]]);
     const list = Object.values(pairs(people)).map(p => parse(p, null)).filter(Boolean);
     let person = list.find(p => p.name.toLowerCase() === name.toLowerCase());
     if (person) {
       const [stored] = await redis([['HGET', k.pins, person.id]]);
-      if (stored) await checkPerson(g, person.id, pin);
-      else await redis([['HSET', k.pins, person.id, pinHash(g, person.id, pin)]]);
+      if (stored) {
+        if (!pin) fail(401, `Welcome back, ${person.name}! Enter your PIN to sign in on this device.`, 'pin_required');
+        await checkPerson(g, person.id, pin);
+      } else if ((tokens || []).includes(person.id)) {
+        fail(409, `Someone named ${person.name} already signed in on another device. If that's you, ask the organizer to reset your sign-in. Otherwise, add a last initial to your name.`, 'name_taken');
+      } else if (pin) {
+        await redis([['HSET', k.pins, person.id, pinHash(g, person.id, pin)]]);
+      }
       await redis([['DEL', k.fails(person.id)]]);
-      return { person: { id: person.id, name: person.name }, created: false };
+      return { person: { id: person.id, name: person.name }, token: await issueToken(g, person.id), created: false, hasPin: !!(stored || pin) };
     }
     if (list.length >= 300) fail(400, 'This group is full.');
     person = { id: newId(), name };
-    await redis([
-      ['HSET', k.people, person.id, JSON.stringify(person)],
-      ['HSET', k.pins, person.id, pinHash(g, person.id, pin)],
-    ]);
-    return { person, created: true };
+    const cmds = [['HSET', k.people, person.id, JSON.stringify(person)]];
+    if (pin) cmds.push(['HSET', k.pins, person.id, pinHash(g, person.id, pin)]);
+    await redis(cmds);
+    return { person, token: await issueToken(g, person.id), created: true, hasPin: !!pin };
+  },
+
+  // Set or change your PIN so you can sign in on another device.
+  async setPin(g, b) {
+    await checkPerson(g, b.personId, b.pin, b.token);
+    const pin = String(b.newPin || '').trim();
+    if (!/^\d{4}$/.test(pin)) fail(400, 'Your PIN should be 4 digits.');
+    await redis([['HSET', K(g).pins, b.personId, pinHash(g, b.personId, pin)]]);
+    return { ok: true };
+  },
+
+  async copyLastYear(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const hol = activeHoliday(await loadSettings(g));
+    if (hol.id === 'custom') fail(400, 'Nothing to copy for a special gathering.');
+    const k = K(g);
+    const [prev] = await redis([['GET', k.event(`${hol.id}-${hol.year - 1}`)]]);
+    const ev = parse(prev, null);
+    if (!ev) fail(404, 'There\'s no setup from last year to copy.');
+    await redis([['SET', k.event(hol.key), JSON.stringify({ ...ev, dateOverride: '' })]]);
+    return { ok: true };
   },
 
   async saveDish(g, b) {
     const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
     const admin = isAdmin(g, b.adminPin);
-    if (!admin) await checkPerson(g, b.personId, b.pin);
+    if (!admin) await checkPerson(g, b.personId, b.pin, b.token);
     let existing = null;
     if (b.id) {
       const [raw] = await redis([['HGET', k.dishes(ev), b.id]]);
@@ -339,7 +390,7 @@ const actions = {
   async removeDish(g, b) {
     const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
     const admin = isAdmin(g, b.adminPin);
-    if (!admin) await checkPerson(g, b.personId, b.pin);
+    if (!admin) await checkPerson(g, b.personId, b.pin, b.token);
     const [raw] = await redis([['HGET', k.dishes(ev), b.id]]);
     const dish = parse(raw, null);
     if (!dish) return { ok: true };
@@ -350,7 +401,7 @@ const actions = {
 
   async rsvp(g, b) {
     const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
-    await checkPerson(g, b.personId, b.pin);
+    await checkPerson(g, b.personId, b.pin, b.token);
     const status = ['yes', 'maybe', 'no'].includes(b.status) ? b.status : 'yes';
     const r = { status, adults: status === 'no' ? 0 : int(b.adults, 0, 30), kids: status === 'no' ? 0 : int(b.kids, 0, 30) };
     await redis([['HSET', k.rsvp(ev), b.personId, JSON.stringify(r)]]);
@@ -425,7 +476,7 @@ const actions = {
   async resetPin(g, b, ip) {
     await requireAdmin(g, b, ip);
     const k = K(g);
-    await redis([['HDEL', k.pins, b.personId], ['DEL', k.fails(b.personId)]]);
+    await redis([['HDEL', k.pins, b.personId], ['HDEL', k.tokens, b.personId], ['DEL', k.fails(b.personId)]]);
     return { ok: true };
   },
 
@@ -434,7 +485,7 @@ const actions = {
     const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
     const [dishes] = await redis([['HGETALL', k.dishes(ev)]]);
     const mine = Object.values(pairs(dishes)).map(d => parse(d, null)).filter(d => d && d.personId === b.personId);
-    const cmds = [['HDEL', k.people, b.personId], ['HDEL', k.pins, b.personId], ['HDEL', k.rsvp(ev), b.personId]];
+    const cmds = [['HDEL', k.people, b.personId], ['HDEL', k.pins, b.personId], ['HDEL', k.tokens, b.personId], ['HDEL', k.rsvp(ev), b.personId]];
     for (const d of mine) cmds.push(['HDEL', k.dishes(ev), d.id]);
     await redis(cmds);
     return { ok: true };
@@ -458,7 +509,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     const status = e.status || 500;
     if (!e.status) console.error(e);
-    res.status(status).json({ error: e.status ? e.message : 'Something went wrong. Try again.' });
+    res.status(status).json({ error: e.status ? e.message : 'Something went wrong. Try again.', code: e.code });
   }
 };
 module.exports._test = { HOLIDAYS, occurrence, activeHoliday, easter, normCode };
