@@ -186,13 +186,24 @@ button.need:hover{outline:2px solid color-mix(in srgb,var(--accent) 40%,transpar
 .foot .fine{grid-column:1/-1;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:.84rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 @media(max-width:720px){.foot .container{grid-template-columns:1fr 1fr}.foot .about{grid-column:1/-1}}
 
-/* Gate */
-#gate{flex:1;display:grid;place-items:center;padding:60px 24px}
-#gate .card{max-width:420px;width:100%;text-align:center;padding:36px 30px}
-#gate .icon{width:60px;height:60px;margin:0 auto 10px;color:var(--accent);display:block}
-#gate .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.76rem;font-weight:700;color:var(--accent2)}
-#gate h1{font-size:2rem;margin:6px 0 4px}
-#gate form{margin-top:22px;text-align:left}
+/* Landing page */
+.land-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+@media(max-width:820px){.land-grid{grid-template-columns:1fr}}
+.land-grid h2{font-size:1.7rem;margin-bottom:4px}
+.land-grid .f{margin-top:14px}
+.land-grid .btn{width:100%;margin-top:18px;padding:13px}
+.how{margin-top:56px}
+.how h2{font-size:2rem;margin-bottom:18px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:820px){.steps{grid-template-columns:1fr}}
+.step .num{width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;margin-bottom:12px}
+.step h3{font-size:1.15rem;margin-bottom:6px}
+.step p{margin:0}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+body.landing .site-only{display:none!important}
+.share{display:flex;gap:8px}
+.share .input{font-size:.9rem}
+.danger-zone{border:1px solid #f1c4bf;background:color-mix(in srgb,#b42318 6%,var(--surface));border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 
 /* Dialogs (custom — never browser pop-ups) */
 .overlay{position:fixed;inset:0;background:rgba(20,14,8,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:fade .15s}
@@ -237,19 +248,53 @@ button.need:hover{outline:2px solid color-mix(in srgb,var(--accent) 40%,transpar
 
 <div id="loading"><div class="spin"></div></div>
 
-<div id="gate" class="hidden">
-  <div class="card">
-    <svg class="icon" id="gateIcon" viewBox="0 0 24 24"></svg>
-    <div class="eyebrow" id="gateEyebrow">Holiday Potluck</div>
-    <h1 id="gateTitle">Who's bringing what?</h1>
-    <div class="muted" id="gateSub"></div>
-    <form id="gateForm" autocomplete="off">
-      <label class="f" for="familyCode">Group code</label>
-      <input class="input" id="familyCode" placeholder="The code you were sent" autocapitalize="none" autocomplete="off">
-      <div class="err" id="gateErr"></div>
-      <button class="btn" style="width:100%;margin-top:12px">Come on in</button>
-    </form>
-  </div>
+<div id="gate" class="hidden" style="flex:1">
+  <header class="hero">
+    <div class="container">
+      <div>
+        <div class="eyebrow" id="gateEyebrow">Holiday Potluck</div>
+        <h1>Who's bringing what?</h1>
+        <div class="tagline">Free sign-up sheets for holiday potlucks. No accounts and no app, just a code you share.</div>
+        <div class="ctas"><a class="btn" href="#join">Join your group</a><a class="btn light" href="#start">Start a potluck</a></div>
+      </div>
+      <div class="countdown" id="gateNext"></div>
+    </div>
+  </header>
+  <main class="page"><div class="container">
+    <div class="land-grid">
+      <form class="card form-card" id="gateForm" autocomplete="off">
+        <h2 id="join">Join your group</h2>
+        <p class="muted" style="margin:0">Got a code from your host? Enter it here to see the menu and sign up.</p>
+        <label class="f" for="familyCode">Group code</label>
+        <input class="input" id="familyCode" placeholder="e.g. smith-thanksgiving" autocapitalize="none" autocomplete="off">
+        <div class="err" id="gateErr"></div>
+        <button class="btn">Join</button>
+      </form>
+      <form class="card form-card" id="startForm" autocomplete="off">
+        <h2 id="start">Start a potluck</h2>
+        <p class="muted" style="margin:0">For your family, friends, church or office. It takes about a minute.</p>
+        <label class="f" for="sgName">Group name</label>
+        <input class="input" id="sgName" maxlength="40" placeholder="e.g. Smith Family Potluck">
+        <label class="f" for="sgCode">Group code</label>
+        <input class="input" id="sgCode" maxlength="30" placeholder="e.g. smith-thanksgiving" autocapitalize="none">
+        <div class="hint">This is what your guests type to get in. Use 5 or more letters, numbers or dashes.</div>
+        <label class="f" for="sgPin">Organizer PIN</label>
+        <input class="input" id="sgPin" type="password" maxlength="20" placeholder="4 to 20 characters">
+        <div class="hint">Only you use this, to open organizer settings. Keep it private.</div>
+        <div class="hp" aria-hidden="true"><label for="sgWebsite">Website</label><input id="sgWebsite" tabindex="-1" autocomplete="off"></div>
+        <div class="err" id="startErr"></div>
+        <button class="btn">Create my potluck</button>
+      </form>
+    </div>
+    <section class="how">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="card step"><div class="num">1</div><h3>Start a group</h3><p class="muted">Pick a name and a code, then choose the holiday. The whole site dresses up to match.</p></div>
+        <div class="card step"><div class="num">2</div><h3>Share the link</h3><p class="muted">Send your guests the link or the code. Nobody needs an account.</p></div>
+        <div class="card step"><div class="num">3</div><h3>Fill the table</h3><p class="muted">Everyone RSVPs and signs up for a dish, and you can see what's still needed.</p></div>
+      </div>
+    </section>
+  </div></main>
 </div>
 
 <div id="site" class="hidden" style="flex:1;display:flex;flex-direction:column">
@@ -289,12 +334,12 @@ button.need:hover{outline:2px solid color-mix(in srgb,var(--accent) 40%,transpar
 
 <footer class="foot">
   <div class="container">
-    <div class="about"><h4 id="footName">Holiday Potluck</h4><p class="muted" style="margin:0">A simple sign-up sheet for holiday food, so every gathering has the right mix of mains, sides and desserts.</p></div>
-    <div><h4>Holidays</h4><ul id="footHolidays"></ul></div>
-    <div><h4>Site</h4><ul>
+    <div class="about"><h4 id="footName">Holiday Potluck</h4><p class="muted" style="margin:0">A simple sign-up sheet for holiday food, so every gathering has the right mix of mains, sides and desserts.</p><p class="site-only" style="margin:10px 0 0"><a href="#" id="newGroupLink">Start your own potluck</a></p></div>
+    <div class="site-only"><h4>Holidays</h4><ul id="footHolidays"></ul></div>
+    <div class="site-only"><h4>Site</h4><ul>
       <li><a href="#menu">The menu</a></li><li><a href="#bring">Bring a dish</a></li>
       <li><button class="link" id="orgBtn" style="font-weight:500">Organizer</button></li>
-      <li><button class="link" id="leaveBtn" style="font-weight:500">Change group code</button></li></ul></div>
+      <li><button class="link" id="leaveBtn" style="font-weight:500">Switch group</button></li></ul></div>
     <div class="fine"><span id="footYear"></span><span>Made with love (and leftovers)</span></div>
   </div>
 </footer>
@@ -353,9 +398,18 @@ const sess = {
   get(k){ try { return sessionStorage.getItem(k); } catch { return null; } },
   set(k,v){ try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} },
 };
-let family = store.get('pl_family');
-let me = store.get('pl_me');           // {id, name, pin}
-let adminPin = sess.get('pl_admin');
+let family = store.get('pl_family');   // the group code
+let me = null;                         // {id, name, pin} for this group
+let adminPin = null;                   // organizer PIN for this group (this tab only)
+const normCode = c => String(c || '').trim().toLowerCase().replace(/\s+/g, '-');
+function saveMe(v){ me = v; store.set('pl_me:' + normCode(family), v); }
+function saveAdmin(v){ adminPin = v; sess.set('pl_admin:' + normCode(family), v); }
+function loadIdentity(){ me = store.get('pl_me:' + normCode(family)); adminPin = sess.get('pl_admin:' + normCode(family)); }
+const shareLink = () => location.origin + location.pathname + '?code=' + encodeURIComponent(S.group.code);
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); toast('Link copied'); }
+  catch { toast('Press and hold the link to copy it'); }
+}
 let S = null;                          // server state
 let form = null;                       // current dish form state
 
@@ -425,38 +479,87 @@ const confirmBox = (title, message, yes = 'Yes', kind = '') =>
   modal({ title, html:`<p class="muted" style="margin:0">${message}</p>`, actions:[{label:'Cancel',kind:'ghost',value:false},{label:yes,kind,value:true,primary:true}] });
 const alertBox = (title, message) => modal({ title, html:`<p class="muted" style="margin:0">${message}</p>`, actions:[{label:'OK',value:true,primary:true}] });
 
-/* ======================= Gate & loading ======================= */
+/* ======================= Front page & loading ======================= */
+let landing = { holiday: null, siteName: 'Holiday Potluck' };
+function paintLanding(){
+  const p = landing;
+  $('#brandName').textContent = $('#gateEyebrow').textContent = $('#footName').textContent = p.siteName;
+  $('#footYear').textContent = '© ' + new Date().getFullYear() + ' ' + p.siteName;
+  document.title = p.siteName + ' · Who\'s bringing what?';
+  if (!p.holiday) return;
+  applyTheme(p.holiday.id);
+  const n = daysBetween(new Intl.DateTimeFormat('en-CA').format(new Date()), p.holiday.date);
+  $('#gateNext').innerHTML = `<svg class="icon" viewBox="0 0 24 24">${iconSvg((THEMES[p.holiday.id]||THEMES.custom).icon)}</svg><div><div class="big">${n > 0 ? n : '★'}</div><div class="small">${n > 0 ? 'days to ' + esc(p.holiday.name) : esc(p.holiday.name)}</div></div>`;
+}
 async function boot(){
   try { const p = await (await fetch('/api/potluck', {method:'POST',headers:{'Content-Type':'application/json'},body:'{"action":"peek"}'})).json();
-    if (p.holiday) { applyTheme(p.holiday.id); $('#brandName').textContent = $('#gateEyebrow').textContent = p.siteName || 'Holiday Potluck';
-      $('#gateTitle').textContent = p.holiday.name; $('#gateSub').textContent = (THEMES[p.holiday.id]||THEMES.custom).tag; }
+    if (p.holiday) landing = { holiday: p.holiday, siteName: p.siteName || 'Holiday Potluck' };
   } catch {}
-  $('#footYear').textContent = '© ' + new Date().getFullYear() + ' ' + $('#brandName').textContent;
-  if (family) { const ok = await load(); if (ok) return; }
+  paintLanding();
+  // Share links look like ?code=smith-thanksgiving
+  const qs = new URLSearchParams(location.search).get('code');
+  if (qs) { history.replaceState(null, '', location.pathname + location.hash); family = qs; }
+  if (family) { const ok = await load(!!qs); if (ok) return; }
   showGate();
 }
 function showGate(){
+  S = null; document.body.classList.add('landing'); paintLanding();
+  $('#familyCode').value = ''; $('#gateErr').textContent = ''; $('#startErr').textContent = '';
   $('#loading').classList.add('hidden'); $('#site').classList.add('hidden'); $('#gate').classList.remove('hidden');
-  $('#navlinks').classList.add('hidden'); $('#navright').innerHTML = ''; $('#familyCode').focus();
+  $('#navlinks').classList.add('hidden'); $('#navright').innerHTML = '<a class="btn small ghost" href="#join">Join</a><a class="btn small" href="#start">Start a potluck</a>';
+  window.scrollTo(0, 0);
 }
 $('#gateForm').addEventListener('submit', async e => {
   e.preventDefault();
   family = $('#familyCode').value.trim();
   $('#gateErr').textContent = '';
-  if (!family) return;
-  const ok = await load(true);
-  if (ok) store.set('pl_family', family);
+  if (!family) { $('#gateErr').textContent = 'Enter your group code.'; return; }
+  await load(true);
 });
+$('#startForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#startForm .btn'); $('#startErr').textContent = '';
+  const groupName = $('#sgName').value.trim(), code = $('#sgCode').value.trim(), pin = $('#sgPin').value.trim();
+  if (!groupName) return $('#startErr').textContent = 'Give your group a name.';
+  if (!code) return $('#startErr').textContent = 'Pick a group code.';
+  if (pin.length < 4) return $('#startErr').textContent = 'Your organizer PIN should be at least 4 characters.';
+  btn.disabled = true;
+  try {
+    const r = await api('createGroup', { groupName, code, adminPin: pin, website: $('#sgWebsite').value });
+    family = r.code;
+    if (!(await load())) throw new Error('Your group was created, but it didn’t open. Try joining with the code.');
+    saveAdmin(pin); render();
+    $('#startForm').reset();
+    welcome();
+  } catch (err) { $('#startErr').textContent = err.message; }
+  btn.disabled = false;
+});
+async function welcome(){
+  const go = await modal({
+    title: 'Your potluck is ready',
+    html: `<p class="muted" style="margin-top:0">Send this link to your guests. It takes them straight in. You can also give them the code <b>${esc(S.group.code)}</b>.</p>
+      <div class="share"><input class="input" id="wLink" readonly value="${esc(shareLink())}"><button class="btn quiet" type="button" id="wCopy">Copy</button></div>
+      <p class="muted" style="margin-bottom:0">Next, open organizer settings to pick the holiday and add the date and place. You can always get back there from <b>Organizer</b> at the bottom of the page.</p>`,
+    actions: [{label:'Later',kind:'ghost',value:null},{label:'Open organizer settings',value:true,primary:true}],
+    onOpen: box => { box.querySelector('#wCopy').onclick = () => copyText(shareLink()); box.querySelector('#wLink').onfocus = e => e.target.select(); },
+  });
+  if (go) organizer();
+}
 async function load(fromGate){
   try {
     S = await api('state');
+    family = S.group.code; store.set('pl_family', family); loadIdentity();
+    document.body.classList.remove('landing');
     $('#gate').classList.add('hidden'); $('#loading').classList.add('hidden');
     $('#site').classList.remove('hidden'); $('#navlinks').classList.remove('hidden');
-    if (me && !S.people.some(p => p.id === me.id)) { me = null; store.set('pl_me', null); }
-    render(); return true;
+    if (me && !S.people.some(p => p.id === me.id)) saveMe(null);
+    form = null; render(); window.scrollTo(0, 0); return true;
   } catch (e) {
-    if (e.status === 401) { family = null; store.set('pl_family', null); if (fromGate) $('#gateErr').textContent = e.message; else showGate(); }
-    else if (fromGate) $('#gateErr').textContent = e.message;
+    if (e.status === 401 || e.status === 429) {
+      family = null; store.set('pl_family', null); S = null;
+      showGate(); if (fromGate) $('#gateErr').textContent = e.message;
+    }
+    else if (fromGate) { showGate(); $('#gateErr').textContent = e.message; }
     else { $('#loading').innerHTML = `<p class="empty muted">${esc(e.message)}</p>`; }
     return false;
   }
@@ -503,7 +606,7 @@ function render(){
     ? `<span>Hi, <b>${esc(me.name)}</b></span>${adminPin ? '<span class="badge">Organizer</span>' : ''}<button class="link" id="signOut">Sign out</button>`
     : `<a class="btn small" href="#bring">Sign in</a>`)
     + (adminPin ? `<button class="btn small ghost" id="navOrg">Organizer settings</button>` : '');
-  $('#signOut') && ($('#signOut').onclick = () => { me = null; store.set('pl_me', null); render(); toast('Signed out'); });
+  $('#signOut') && ($('#signOut').onclick = () => { saveMe(null); render(); toast('Signed out'); });
   $('#navOrg') && ($('#navOrg').onclick = () => organizer());
 
   $('#footHolidays').innerHTML = S.holidays.filter(x => x.date).map(x => `<li class="${x.id===h.id?'cur':''}">${esc(x.name)}</li>`).join('');
@@ -535,7 +638,7 @@ async function signInFrom(prefix){
   if (!name) throw new Error('Enter your name.');
   if (!/^\d{4}$/.test(pin)) throw new Error('Your PIN should be 4 digits.');
   const r = await api('signin', { name, pin, personId: undefined });
-  me = { id: r.person.id, name: r.person.name, pin }; store.set('pl_me', me);
+  saveMe({ id: r.person.id, name: r.person.name, pin });
   toast(r.created ? `Welcome, ${me.name}!` : `Welcome back, ${me.name}!`);
 }
 
@@ -679,8 +782,8 @@ $('#dishForm').addEventListener('submit', async e => {
 
 /* ======================= Actions ======================= */
 function handleErr(e){
-  if (e.status === 401 && /sign in|PIN doesn/.test(e.message)) { me = null; store.set('pl_me', null); render(); alertBox('Please sign in again', esc(e.message)); return; }
-  if (e.status === 401 && /Organizer/.test(e.message)) { adminPin = null; sess.set('pl_admin', null); render(); }
+  if (e.status === 401 && /sign in|PIN doesn/.test(e.message)) { saveMe(null); render(); alertBox('Please sign in again', esc(e.message)); return; }
+  if (e.status === 401 && /Organizer/.test(e.message)) { saveAdmin(null); render(); }
   alertBox('Hmm, that didn’t work', esc(e.message));
 }
 async function removeDish(d){
@@ -688,10 +791,12 @@ async function removeDish(d){
   if (!(await confirmBox('Remove this dish?', `<b>${esc(d.name)}</b> will come off the menu.`, 'Remove', 'danger'))) return;
   try { await api('removeDish', { id: d.id }); if (form && form.id === d.id) form = null; toast('Removed'); await refresh(); } catch (e) { handleErr(e); }
 }
+function leaveGroup(){ family = null; me = null; adminPin = null; store.set('pl_family', null); showGate(); }
 $('#leaveBtn').onclick = async () => {
-  if (!(await confirmBox('Change group code?', 'You’ll need to enter the code again to get back in.', 'Change it'))) return;
-  family = null; store.set('pl_family', null); showGate();
+  if (!(await confirmBox('Switch group?', 'You’ll go back to the front page, where you can join another group with its code. You can come back to this one with its code or link.', 'Switch group'))) return;
+  leaveGroup();
 };
+$('#newGroupLink').onclick = e => { e.preventDefault(); leaveGroup(); setTimeout(() => $('#start').scrollIntoView(), 50); };
 
 /* ======================= Organizer ======================= */
 $('#orgBtn').onclick = async () => {
@@ -704,7 +809,7 @@ $('#orgBtn').onclick = async () => {
       validate: async box => { const p = box.querySelector('#aPin').value.trim(); await api('adminCheck', { adminPin: p }); return p; },
     });
     if (!pin) return;
-    adminPin = pin; sess.set('pl_admin', pin); render();
+    saveAdmin(pin); render();
   }
   organizer();
 };
@@ -727,6 +832,18 @@ async function organizer(){
       <div class="preview" id="oPrev"></div>
       <label class="row hidden" id="oFreshRow" style="margin-top:10px;font-size:.9rem"><input type="checkbox" id="oFresh"> Start a fresh list for a new gathering</label>
 
+      <div class="section-title">Sharing</div>
+      <label class="f" for="oLink">Invite link</label>
+      <div class="share"><input class="input" id="oLink" readonly value="${esc(shareLink())}"><button class="btn quiet" type="button" id="oCopy">Copy</button></div>
+      ${S.group.legacy ? `<div class="hint">This group's code and organizer PIN are set in Vercel (GROUP_CODE and ADMIN_PIN).</div>` : `
+      <div class="org-grid" style="margin-top:14px">
+        <div><label class="f" for="oCode">Group code</label><input class="input" id="oCode" maxlength="30" value="${esc(S.group.code)}" autocapitalize="none">
+          <div class="hint">If you change it, the old code and link stop working.</div></div>
+        <div><label class="f" for="oNewPin">New organizer PIN</label><input class="input" id="oNewPin" type="password" maxlength="20" placeholder="Leave blank to keep it">
+          <div class="hint">4 to 20 characters.</div></div></div>`}
+
+      <div class="notes hidden" id="oSwitchNote" style="margin-top:22px"></div>
+      <div id="oDetails">
       <div class="section-title">${esc(h.name)} details</div>
       <div class="hint" style="margin:-6px 0 12px">These are for the holiday showing now. To edit another holiday's details, switch to it and save first.</div>
       <div class="org-grid">
@@ -740,8 +857,11 @@ async function organizer(){
       <div class="section-title">How many of each do we need?</div>
       <div class="targets">${S.categories.map(c => `<label>${esc(c.name)}<input type="number" min="0" max="50" data-target="${c.id}" value="${(ev.targets||{})[c.id]||''}" placeholder="–"></label>`).join('')}</div>
       <div class="hint">Leave blank if you don't need a set number.</div>
+      </div>
 
       <div class="section-title">People</div>${people}
+      ${S.group.legacy ? '' : `<div class="section-title">Delete this group</div>
+      <div class="danger-zone"><span class="muted" style="font-size:.9rem">Permanently removes this group and every holiday's menu, RSVPs and people.</span><button class="btn danger small" type="button" id="oDelete">Delete group</button></div>`}
       <div style="margin-top:18px"><button class="link" id="oOut">Leave organizer mode</button></div>`,
     actions: [{label:'Close',kind:'ghost',value:null},{label:'Save',value:'save',primary:true}],
     onOpen: (box, close) => {
@@ -752,9 +872,31 @@ async function organizer(){
         p.style.background = t.accent; p.style.color = '#fff'; p.style.borderColor = 'transparent';
         p.innerHTML = `<svg viewBox="0 0 24 24">${iconSvg(t.icon)}</svg><div><b style="font-family:Fraunces,serif">${esc((S.holidays.find(x => x.id === id)||{}).name)}</b><div style="font-size:.85rem;opacity:.85">${esc(t.tag)}</div></div>`;
         box.querySelector('#oFreshRow').classList.toggle('hidden', !(v === 'custom' && S.holiday.id === 'custom'));
+        const switching = v !== sel || (v === 'custom' && box.querySelector('#oFresh').checked);
+        box.querySelector('#oDetails').classList.toggle('hidden', switching);
+        const note = box.querySelector('#oSwitchNote');
+        note.classList.toggle('hidden', !switching);
+        note.innerHTML = `Click <b>Save</b> to switch to ${esc((S.holidays.find(x => x.id === id)||{}).name)}. Its details page opens right after, so you can add the date, time and place.`;
       };
-      box.querySelector('#oHol').onchange = prev; prev();
-      box.querySelector('#oOut').onclick = () => { adminPin = null; sess.set('pl_admin', null); close(null); render(); toast('Left organizer mode'); };
+      box.querySelector('#oHol').onchange = prev; box.querySelector('#oFresh').onchange = prev; prev();
+      box.querySelector('#oCopy').onclick = () => copyText(shareLink());
+      box.querySelector('#oLink').onfocus = e => e.target.select();
+      box.querySelector('#oDelete') && (box.querySelector('#oDelete').onclick = async () => {
+        close(null);
+        const done = await modal({
+          title: 'Delete this group?',
+          html: `<p class="muted" style="margin-top:0">This can't be undone. Every holiday's menu, RSVPs and people in <b>${esc(S.settings.siteName)}</b> will be gone, and the code and link will stop working.</p>
+            <label class="f" for="delCode">Type the group code <b>${esc(S.group.code)}</b> to confirm</label><input class="input" id="delCode" autocapitalize="none" autocomplete="off">`,
+          actions: [{label:'Keep it',kind:'ghost',value:null},{label:'Delete forever',kind:'danger',value:'go'}],
+          validate: async b2 => {
+            if (normCode(b2.querySelector('#delCode').value) !== S.group.code) throw new Error('That doesn’t match the group code.');
+            await api('deleteGroup'); return true;
+          },
+        });
+        if (done) { store.set('pl_me:' + S.group.code, null); leaveGroup(); toast('Group deleted'); }
+        else organizer();
+      });
+      box.querySelector('#oOut').onclick = () => { saveAdmin(null); close(null); render(); toast('Left organizer mode'); };
       box.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => {
         const name = personName(b.dataset.reset);
         close(null);
@@ -767,7 +909,7 @@ async function organizer(){
         const name = personName(b.dataset.rm);
         close(null);
         if (await confirmBox(`Remove ${esc(name)}?`, `This removes ${esc(name)} and their dishes from this holiday's menu.`, 'Remove', 'danger')) {
-          try { await api('removePerson', { personId: b.dataset.rm }); if (me && me.id === b.dataset.rm) { me = null; store.set('pl_me', null); } toast('Removed'); await refresh(); } catch (e) { handleErr(e); }
+          try { await api('removePerson', { personId: b.dataset.rm }); if (me && me.id === b.dataset.rm) { saveMe(null); } toast('Removed'); await refresh(); } catch (e) { handleErr(e); }
         }
         organizer();
       });
@@ -776,16 +918,31 @@ async function organizer(){
       const v = box.querySelector('#oHol').value;
       const holidayChanged = v !== sel || (v === 'custom' && box.querySelector('#oFresh').checked);
       const siteName = box.querySelector('#oSite').value.trim();
-      // Save details first (they belong to the holiday showing now), then switch holidays.
+      // Details belong to the holiday showing now. When switching holidays, the details
+      // section is hidden and settings reopen for the new holiday after saving.
       const targets = {}; box.querySelectorAll('[data-target]').forEach(i => targets[i.dataset.target] = i.value);
       const dateVal = box.querySelector('#oDate').value;
-      await api('setEvent', {
+      if (!holidayChanged) await api('setEvent', {
         title: box.querySelector('#oTitle').value, time: box.querySelector('#oTime').value,
         dateOverride: dateVal && dateVal !== h.date ? dateVal : '',
         location: box.querySelector('#oLoc').value, host: box.querySelector('#oHost').value,
         notes: box.querySelector('#oNotes').value, targets,
       });
       await api('setHoliday', v === 'auto' ? { mode:'auto', siteName } : { mode:'fixed', holiday:v, newCustom: box.querySelector('#oFresh').checked, siteName });
+      if (!S.group.legacy) {
+        const newPin = box.querySelector('#oNewPin').value.trim();
+        if (newPin) {
+          if (newPin.length < 4) throw new Error('The new organizer PIN should be at least 4 characters.');
+          await api('setAdminPin', { newPin }); saveAdmin(newPin); box.querySelector('#oNewPin').value = '';
+        }
+        const code = normCode(box.querySelector('#oCode').value);
+        if (code && code !== S.group.code) {
+          const r = await api('setCode', { code });
+          const keepMe = me, keepAdmin = adminPin;
+          family = r.code; S.group.code = r.code; store.set('pl_family', family);
+          saveMe(keepMe); saveAdmin(keepAdmin);
+        }
+      }
       return { holidayChanged };
     },
   });
@@ -793,6 +950,7 @@ async function organizer(){
   form = null;
   await refresh();
   toast(res.holidayChanged ? `Switched to ${S.holiday.name}` : 'Saved');
+  if (res.holidayChanged) organizer();
 }
 
 boot();

@@ -1,29 +1,29 @@
 # Holiday Potluck
 
-People sign in and say what food they're bringing to holiday gatherings. The organizer picks the holiday, and the whole site changes its colors, icon and list to match. Each holiday keeps its own list.
+Free sign-up sheets for holiday potlucks. Anyone can start a group from the front page. They share a code or link with their guests, and everyone signs up for what they're bringing. The organizer picks the holiday, and the whole site changes its colors, icon and menu to match. Each holiday keeps its own list.
 
 **Holidays:** New Year's Day, Valentine's Day, Easter, Memorial Day, Fourth of July, Labor Day, Halloween, Thanksgiving, Christmas, and a "Special gathering" for birthdays or anything else. **Automatic** mode always shows the next holiday coming up, and it switches over the day after each one.
 
 ## Features
-- A shared group code to get in, so it works for a family, friends, a church group or an office. There are no accounts. Each person picks a name and a 4-digit PIN so only they can change their own dishes. Five wrong PINs locks that name for 10 minutes.
-- Dishes are sorted into categories like mains, sides and desserts, with dietary tags, a "serves" amount and a note.
-- If someone adds a dish that's already on the list, the site warns them first.
-- RSVPs with adult and kid counts, plus a running headcount.
-- The organizer can set how many of each category they need, for example 4 sides and 3 desserts. The site then shows a "Still needed" list.
-- The organizer screen has the holiday switcher, the date, time, location, host and notes, PIN resets, and removing people. In organizer mode you can edit or remove any dish.
-- The list refreshes every 20 seconds, so everyone sees new dishes.
+- **Groups.** The front page has *Join your group* (enter a code) and *Start a potluck* (group name, group code, organizer PIN). Each group's people, menus, RSVPs and settings are completely separate.
+- **Share links.** `https://your-site/?code=smith-thanksgiving` takes guests straight into a group.
+- **No accounts.** People pick a name and a 4-digit PIN so only they can change their own dishes. Five wrong PINs locks that name for 10 minutes.
+- **The menu.** Dishes are sorted into categories with dietary tags, a "serves" amount and a note. The site warns people before they add a duplicate. RSVPs include adult and kid counts. Organizers can set how many of each category they need, which shows a "Still needed" list.
+- **Organizer settings.** The holiday switcher, the date, time, place, host and notes, the invite link, changing the group code or organizer PIN, PIN resets, removing people, and deleting the group.
+- **Spam protection.** Five new groups per visitor per day, a site-wide cap (`MAX_GROUPS`), a hidden bot trap, and a lockout after too many wrong group codes or organizer PINs.
 - Every pop-up is styled to match the site. None of them are the browser's built-in boxes.
 
 ## Deploy (Vercel)
-1. Push this folder to a GitHub repo and import it in Vercel. No build settings are needed.
-2. **Database:** in Vercel → **Storage**, open your existing Upstash Redis database, click **Connect Project**, and choose this project. It shares the database with Secret Santa safely, because this site's keys start with `pl:` and Secret Santa's start with `ss:`.
-3. In the project → **Settings → Environment Variables**, add:
-   - `GROUP_CODE`: what people type to get in. `FAMILY_CODE` also works.
-   - Change the site name any time in organizer settings, e.g. "Burleson Family Potluck" or "Office Potluck."
-   - `ADMIN_PIN`: your organizer password.
-   - Optional: `KEY_PREFIX` (default `pl:`) and `TIMEZONE` (default `America/Chicago`).
+1. Import this repo in Vercel. No build settings are needed.
+2. **Database:** in Vercel → **Storage**, open your Upstash Redis database, click **Connect Project**, and choose this project. It can share a database with other sites, such as Secret Santa, because everything is stored under keys starting with `pl:`.
+3. In **Settings → Environment Variables**:
+   - `ADMIN_PIN`: the site owner's master PIN. It opens organizer settings for **any** group, which helps if an organizer forgets theirs. Keep it secret.
+   - Optional `GROUP_CODE` (or `FAMILY_CODE`): a built-in group whose code lives in Vercel and whose organizer PIN is `ADMIN_PIN`. Groups created on the site don't need this.
+   - Optional: `SITE_NAME` (default "Holiday Potluck"), `MAX_GROUPS` (default 1000), `KEY_PREFIX` (default `pl:`), `TIMEZONE` (default `America/Chicago`).
 4. **Redeploy** so the variables take effect.
-5. Open the site, tap **Organizer** at the bottom, and set the holiday and details.
+
+## Usage limits
+Each open page checks for updates every 20 seconds. On the free Upstash plan that's plenty for many small groups. If the site gets popular, watch the request count in the Upstash dashboard.
 
 ## Files
 - `index.html` contains the whole front end.

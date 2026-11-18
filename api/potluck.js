@@ -1,26 +1,45 @@
 // Holiday Potluck API — one Vercel serverless function.
 // Storage: Upstash Redis REST (shares an existing Vercel → Storage → Upstash database).
-// Env vars: GROUP_CODE (FAMILY_CODE also works), ADMIN_PIN, KV_REST_API_URL / KV_REST_API_TOKEN (Vercel adds these
-// when you connect the database), optional KEY_PREFIX (default "pl:") and TIMEZONE.
+//
+// Anyone can start their own potluck group from the front page. Each group has its own
+// code, organizer PIN, holiday, menu, people and RSVPs, stored under pl:g:<groupId>:...
+// The group set up with the GROUP_CODE env var keeps its data under the original pl: keys.
+//
+// Env vars:
+//   KV_REST_API_URL / KV_REST_API_TOKEN  added by Vercel when you connect the database
+//   GROUP_CODE (or FAMILY_CODE)          optional: code for the original group
+//   ADMIN_PIN                            organizer PIN for the original group, and the site
+//                                        owner's master PIN that opens any group's settings
+//   SITE_NAME     optional, front-page name (default "Holiday Potluck")
+//   MAX_GROUPS    optional, cap on groups that can be created (default 1000)
+//   KEY_PREFIX    optional (default "pl:"), TIMEZONE optional (default America/Chicago)
 const crypto = require('crypto');
 
 const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const DB_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const FAMILY = (process.env.GROUP_CODE || process.env.FAMILY_CODE || '').trim().toLowerCase();
-const ADMIN = (process.env.ADMIN_PIN || '').trim();
+const LEGACY_CODE = (process.env.GROUP_CODE || process.env.FAMILY_CODE || '').trim().toLowerCase();
+const OWNER = (process.env.ADMIN_PIN || '').trim();
 const P = process.env.KEY_PREFIX || 'pl:';
 const TZ = process.env.TIMEZONE || 'America/Chicago';
+const SITE_NAME = process.env.SITE_NAME || 'Holiday Potluck';
+const MAX_GROUPS = Number(process.env.MAX_GROUPS) || 1000;
 
-const K = {
-  settings: P + 'settings',
-  people: P + 'people',
-  pins: P + 'pins',
-  fails: id => P + 'fail:' + id,
-  event: ev => P + 'ev:' + ev,
-  dishes: ev => P + 'dish:' + ev,
-  rsvp: ev => P + 'rsvp:' + ev,
+// Site-wide keys
+const G = {
+  codes: P + 'codes',              // hash: code -> groupId
+  groups: P + 'groups',            // hash: groupId -> {id, name, created}
+  rate: (kind, ip) => P + 'rl:' + kind + ':' + ip,
 };
-
+// Per-group keys. g.prefix is "pl:" for the original group, "pl:g:<id>:" for the rest.
+const K = g => ({
+  settings: g.prefix + 'settings',
+  people: g.prefix + 'people',
+  pins: g.prefix + 'pins',
+  fails: id => g.prefix + 'fail:' + id,
+  event: ev => g.prefix + 'ev:' + ev,
+  dishes: ev => g.prefix + 'dish:' + ev,
+  rsvp: ev => g.prefix + 'rsvp:' + ev,
+});
 const CATEGORIES = [
   { id: 'main', name: 'Main dishes' },
   { id: 'side', name: 'Sides' },
@@ -100,6 +119,7 @@ function activeHoliday(settings, now = today()) {
   return best;
 }
 
+
 /* ---------- Helpers ---------- */
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 const fail = (status, msg) => { throw new HttpError(status, msg); };
@@ -117,32 +137,72 @@ async function redis(cmds) {
 const pairs = arr => { const o = {}; for (let i = 0; i < (arr || []).length; i += 2) o[arr[i]] = arr[i + 1]; return o; };
 const parse = (s, d) => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
-const pinHash = (id, pin) => sha(FAMILY + ':' + id + ':' + pin);
 const safeEq = (a, b) => crypto.timingSafeEqual(Buffer.from(sha(String(a))), Buffer.from(sha(String(b))));
 const newId = () => crypto.randomBytes(6).toString('hex');
 const clean = (s, max) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, max);
 const cleanNote = (s, max) => String(s == null ? '' : s).replace(/\r/g, '').trim().slice(0, max);
 const int = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || 0)));
+const normCode = s => String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, '-');
+const pinHash = (g, id, pin) => sha(g.salt + ':' + id + ':' + pin);
+const adminHash = (gid, pin) => sha('admin:' + gid + ':' + String(pin).trim());
 
-const DEFAULT_SETTINGS = { mode: 'auto', holiday: 'thanksgiving', siteName: 'Holiday Potluck' };
-const DEFAULT_EVENT = { title: '', dateOverride: '', time: '', location: '', host: '', notes: '', targets: {} };
-
-async function loadSettings() {
-  const [s] = await redis([['GET', K.settings]]);
-  return { ...DEFAULT_SETTINGS, ...parse(s, {}) };
+function clientIp(req) {
+  return String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+}
+// Counts an attempt; fails once the limit is reached within the window.
+async function limit(kind, ip, max, seconds, msg) {
+  const [n] = await redis([['INCR', G.rate(kind, ip)], ['EXPIRE', G.rate(kind, ip), seconds]]);
+  if (n > max) fail(429, msg);
+}
+async function peekLimit(kind, ip, max, msg) {
+  const [n] = await redis([['GET', G.rate(kind, ip)]]);
+  if (Number(n) >= max) fail(429, msg);
 }
 
+function validCode(raw) {
+  const code = normCode(raw);
+  if (code.length < 5) fail(400, 'Make your group code at least 5 characters, so it\'s hard to guess.');
+  if (code.length > 30) fail(400, 'Keep your group code to 30 characters or fewer.');
+  if (!/^[a-z0-9-]+$/.test(code)) fail(400, 'Use only letters, numbers and dashes in the group code.');
+  if (LEGACY_CODE && code === normCode(LEGACY_CODE)) fail(409, 'That group code is taken. Try another.');
+  return code;
+}
+
+async function resolveGroup(rawCode, ip) {
+  const code = normCode(rawCode);
+  if (!code) fail(401, 'Enter your group code.');
+  if (LEGACY_CODE && safeEq(code, normCode(LEGACY_CODE))) {
+    return { id: 'main', prefix: P, salt: LEGACY_CODE, legacy: true, code, name: '' };
+  }
+  await peekLimit('code', ip, 15, 'Too many tries. Wait 10 minutes and try your group code again.');
+  const [gid] = await redis([['HGET', G.codes, code]]);
+  const [metaRaw] = gid ? await redis([['HGET', G.groups, gid]]) : [null];
+  const meta = parse(metaRaw, null);
+  if (!meta) {
+    await limit('code', ip, 1e9, 600, '');
+    fail(401, 'We couldn\'t find a group with that code. Check the spelling, or start a new potluck.');
+  }
+  return { id: meta.id, prefix: P + 'g:' + meta.id + ':', salt: meta.id, legacy: false, code: meta.code, name: meta.name, meta };
+}
+
+const DEFAULT_SETTINGS = { mode: 'auto', holiday: 'thanksgiving', siteName: SITE_NAME };
+const DEFAULT_EVENT = { title: '', dateOverride: '', time: '', location: '', host: '', notes: '', targets: {} };
+
+async function loadSettings(g) {
+  const [s] = await redis([['GET', K(g).settings]]);
+  return { ...DEFAULT_SETTINGS, ...(g.name ? { siteName: g.name } : {}), ...parse(s, {}) };
+}
 function holidayList(now) {
   return HOLIDAYS.map(h => ({ id: h.id, name: h.name, date: occurrence(h, now).date }));
 }
 
-async function fullState(settings) {
+async function fullState(g, settings) {
   const now = today();
   const hol = activeHoliday(settings, now);
-  const ev = hol.key;
+  const ev = hol.key, k = K(g);
   const [people, pins, event, dishes, rsvp] = await redis([
-    ['HGETALL', K.people], ['HKEYS', K.pins], ['GET', K.event(ev)],
-    ['HGETALL', K.dishes(ev)], ['HGETALL', K.rsvp(ev)],
+    ['HGETALL', k.people], ['HKEYS', k.pins], ['GET', k.event(ev)],
+    ['HGETALL', k.dishes(ev)], ['HGETALL', k.rsvp(ev)],
   ]);
   const pinSet = new Set(pins || []);
   const ppl = Object.values(pairs(people)).map(p => parse(p, null)).filter(Boolean)
@@ -150,6 +210,7 @@ async function fullState(settings) {
     .sort((a, b) => a.name.localeCompare(b.name));
   return {
     today: now,
+    group: { code: g.code, legacy: g.legacy },
     settings,
     holiday: hol,
     holidays: holidayList(now),
@@ -157,23 +218,35 @@ async function fullState(settings) {
     tags: TAGS,
     event: { ...DEFAULT_EVENT, ...parse(event, {}) },
     people: ppl,
-    dishes: Object.values(pairs(dishes)).map(d => parse(d, null)).filter(Boolean)
-      .sort((a, b) => a.ts - b.ts),
+    dishes: Object.values(pairs(dishes)).map(d => parse(d, null)).filter(Boolean).sort((a, b) => a.ts - b.ts),
     rsvps: Object.fromEntries(Object.entries(pairs(rsvp)).map(([k, v]) => [k, parse(v, {})])),
   };
 }
 
-async function checkPerson(personId, pin) {
+async function checkPerson(g, personId, pin) {
+  const k = K(g);
   if (!personId || !/^\d{4}$/.test(String(pin || ''))) fail(401, 'Please sign in again.');
-  const [stored, fails] = await redis([['HGET', K.pins, personId], ['GET', K.fails(personId)]]);
+  const [stored, fails] = await redis([['HGET', k.pins, personId], ['GET', k.fails(personId)]]);
   if (Number(fails) >= 5) fail(429, 'Too many wrong PINs. Try again in 10 minutes, or ask the organizer to reset your PIN.');
-  if (!stored || !safeEq(stored, pinHash(personId, pin))) {
-    await redis([['INCR', K.fails(personId)], ['EXPIRE', K.fails(personId), 600]]);
+  if (!stored || !safeEq(stored, pinHash(g, personId, pin))) {
+    await redis([['INCR', k.fails(personId)], ['EXPIRE', k.fails(personId), 600]]);
     fail(401, 'That PIN doesn\'t match.');
   }
 }
-const isAdmin = pin => ADMIN && pin && safeEq(String(pin).trim(), ADMIN);
-function requireAdmin(b) { if (!isAdmin(b.adminPin)) fail(401, 'Organizer PIN is incorrect.'); }
+function isAdmin(g, pin) {
+  if (!pin) return false;
+  pin = String(pin).trim();
+  if (OWNER && safeEq(pin, OWNER)) return true;              // site owner's master PIN
+  if (g.legacy) return false;
+  return !!g.meta.adminHash && safeEq(adminHash(g.id, pin), g.meta.adminHash);
+}
+async function requireAdmin(g, b, ip) {
+  await peekLimit('admin', ip, 10, 'Too many wrong organizer PINs. Wait 10 minutes and try again.');
+  if (!isAdmin(g, b.adminPin)) {
+    await limit('admin', ip, 1e9, 600, '');
+    fail(401, 'Organizer PIN is incorrect.');
+  }
+}
 
 function dishFrom(b, existing) {
   const name = clean(b.name, 80);
@@ -183,90 +256,112 @@ function dishFrom(b, existing) {
   return { ...existing, name, cat, tags, note: cleanNote(b.note, 200), serves: clean(b.serves, 20) };
 }
 
-/* ---------- Actions ---------- */
-const actions = {
-  // No group code needed: just enough to theme the sign-in screen.
+/* ---------- Actions that don't need a group ---------- */
+const open = {
+  // Front page: theme it for the next holiday.
   async peek() {
-    const settings = await loadSettings();
-    const hol = activeHoliday(settings);
-    return { holiday: hol, siteName: settings.siteName };
+    return { holiday: activeHoliday(DEFAULT_SETTINGS), siteName: SITE_NAME };
   },
 
-  async state(b) { return fullState(await loadSettings()); },
+  async createGroup(b, ip) {
+    if (b.website) fail(400, 'Something went wrong. Try again.');   // honeypot for bots
+    const name = clean(b.groupName, 40);
+    if (name.length < 2) fail(400, 'Give your group a name.');
+    const code = validCode(b.code);
+    const pin = String(b.adminPin || '').trim();
+    if (pin.length < 4 || pin.length > 20) fail(400, 'Your organizer PIN should be 4 to 20 characters.');
+    const [count] = await redis([['HLEN', G.groups]]);
+    if (count >= MAX_GROUPS) fail(503, 'We\'re not taking new groups right now. Please check back later.');
+    await peekLimit('create', ip, 5, 'You\'ve started several groups today. Try again tomorrow.');
+    const id = newId();
+    const [ok] = await redis([['HSETNX', G.codes, code, id]]);
+    if (!ok) fail(409, 'That group code is taken. Try another.');
+    const meta = { id, name, code, adminHash: adminHash(id, pin), created: Date.now() };
+    await redis([
+      ['HSET', G.groups, id, JSON.stringify(meta)],
+      ['SET', P + 'g:' + id + ':settings', JSON.stringify({ ...DEFAULT_SETTINGS, siteName: name })],
+      ['INCR', G.rate('create', ip)], ['EXPIRE', G.rate('create', ip), 86400],
+    ]);
+    return { ok: true, code };
+  },
+};
 
-  async signin(b) {
+/* ---------- Actions inside a group ---------- */
+const actions = {
+  async state(g) { return fullState(g, await loadSettings(g)); },
+
+  async signin(g, b) {
+    const k = K(g);
     const name = clean(b.name, 40);
     const pin = String(b.pin || '');
     if (!name) fail(400, 'Enter your name.');
     if (!/^\d{4}$/.test(pin)) fail(400, 'Your PIN should be 4 digits.');
-    const [people] = await redis([['HGETALL', K.people]]);
+    const [people] = await redis([['HGETALL', k.people]]);
     const list = Object.values(pairs(people)).map(p => parse(p, null)).filter(Boolean);
     let person = list.find(p => p.name.toLowerCase() === name.toLowerCase());
     if (person) {
-      const [stored] = await redis([['HGET', K.pins, person.id]]);
-      if (stored) await checkPerson(person.id, pin);
-      else await redis([['HSET', K.pins, person.id, pinHash(person.id, pin)]]);
-      await redis([['DEL', K.fails(person.id)]]);
+      const [stored] = await redis([['HGET', k.pins, person.id]]);
+      if (stored) await checkPerson(g, person.id, pin);
+      else await redis([['HSET', k.pins, person.id, pinHash(g, person.id, pin)]]);
+      await redis([['DEL', k.fails(person.id)]]);
       return { person: { id: person.id, name: person.name }, created: false };
     }
-    if (b.mustExist) fail(404, 'No one by that name yet.');
+    if (list.length >= 300) fail(400, 'This group is full.');
     person = { id: newId(), name };
     await redis([
-      ['HSET', K.people, person.id, JSON.stringify(person)],
-      ['HSET', K.pins, person.id, pinHash(person.id, pin)],
+      ['HSET', k.people, person.id, JSON.stringify(person)],
+      ['HSET', k.pins, person.id, pinHash(g, person.id, pin)],
     ]);
     return { person, created: true };
   },
 
-  async saveDish(b) {
-    const settings = await loadSettings();
-    const ev = activeHoliday(settings).key;
-    const admin = isAdmin(b.adminPin);
-    if (!admin) await checkPerson(b.personId, b.pin);
+  async saveDish(g, b) {
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    const admin = isAdmin(g, b.adminPin);
+    if (!admin) await checkPerson(g, b.personId, b.pin);
     let existing = null;
     if (b.id) {
-      const [raw] = await redis([['HGET', K.dishes(ev), b.id]]);
+      const [raw] = await redis([['HGET', k.dishes(ev), b.id]]);
       existing = parse(raw, null);
       if (!existing) fail(404, 'That dish was already removed.');
       if (!admin && existing.personId !== b.personId) fail(403, 'You can only change your own dishes.');
     } else {
-      const [count] = await redis([['HLEN', K.dishes(ev)]]);
+      if (!b.personId) fail(401, 'Please sign in again.');
+      const [count] = await redis([['HLEN', k.dishes(ev)]]);
       if (count >= 300) fail(400, 'This list is full.');
       existing = { id: newId(), personId: b.personId, ts: Date.now() };
     }
     const dish = dishFrom(b, existing);
-    await redis([['HSET', K.dishes(ev), dish.id, JSON.stringify(dish)]]);
+    await redis([['HSET', k.dishes(ev), dish.id, JSON.stringify(dish)]]);
     return { ok: true, dish };
   },
 
-  async removeDish(b) {
-    const settings = await loadSettings();
-    const ev = activeHoliday(settings).key;
-    const admin = isAdmin(b.adminPin);
-    if (!admin) await checkPerson(b.personId, b.pin);
-    const [raw] = await redis([['HGET', K.dishes(ev), b.id]]);
+  async removeDish(g, b) {
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    const admin = isAdmin(g, b.adminPin);
+    if (!admin) await checkPerson(g, b.personId, b.pin);
+    const [raw] = await redis([['HGET', k.dishes(ev), b.id]]);
     const dish = parse(raw, null);
     if (!dish) return { ok: true };
     if (!admin && dish.personId !== b.personId) fail(403, 'You can only remove your own dishes.');
-    await redis([['HDEL', K.dishes(ev), b.id]]);
+    await redis([['HDEL', k.dishes(ev), b.id]]);
     return { ok: true };
   },
 
-  async rsvp(b) {
-    const settings = await loadSettings();
-    const ev = activeHoliday(settings).key;
-    await checkPerson(b.personId, b.pin);
+  async rsvp(g, b) {
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    await checkPerson(g, b.personId, b.pin);
     const status = ['yes', 'maybe', 'no'].includes(b.status) ? b.status : 'yes';
     const r = { status, adults: status === 'no' ? 0 : int(b.adults, 0, 30), kids: status === 'no' ? 0 : int(b.kids, 0, 30) };
-    await redis([['HSET', K.rsvp(ev), b.personId, JSON.stringify(r)]]);
+    await redis([['HSET', k.rsvp(ev), b.personId, JSON.stringify(r)]]);
     return { ok: true };
   },
 
-  async adminCheck(b) { requireAdmin(b); return { ok: true }; },
+  async adminCheck(g, b, ip) { await requireAdmin(g, b, ip); return { ok: true }; },
 
-  async setHoliday(b) {
-    requireAdmin(b);
-    const settings = await loadSettings();
+  async setHoliday(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const settings = await loadSettings(g);
     if (b.mode === 'auto') settings.mode = 'auto';
     else {
       if (!HOLIDAY_IDS.has(b.holiday)) fail(400, 'Unknown holiday.');
@@ -274,15 +369,14 @@ const actions = {
       settings.holiday = b.holiday;
       if (b.holiday === 'custom' && (b.newCustom || !settings.customKey)) settings.customKey = 'custom-' + newId();
     }
-    if (b.siteName !== undefined) settings.siteName = clean(b.siteName, 40) || DEFAULT_SETTINGS.siteName;
-    await redis([['SET', K.settings, JSON.stringify(settings)]]);
+    if (b.siteName !== undefined) settings.siteName = clean(b.siteName, 40) || g.name || SITE_NAME;
+    await redis([['SET', K(g).settings, JSON.stringify(settings)]]);
     return { ok: true };
   },
 
-  async setEvent(b) {
-    requireAdmin(b);
-    const settings = await loadSettings();
-    const ev = activeHoliday(settings).key;
+  async setEvent(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const ev = activeHoliday(await loadSettings(g)).key;
     const targets = {};
     for (const c of CATEGORIES) { const n = int((b.targets || {})[c.id], 0, 50); if (n) targets[c.id] = n; }
     const dateOverride = /^\d{4}-\d{2}-\d{2}$/.test(b.dateOverride || '') ? b.dateOverride : '';
@@ -290,24 +384,58 @@ const actions = {
       title: clean(b.title, 60), dateOverride, time: clean(b.time, 30),
       location: clean(b.location, 120), host: clean(b.host, 60), notes: cleanNote(b.notes, 600), targets,
     };
-    await redis([['SET', K.event(ev), JSON.stringify(event)]]);
+    await redis([['SET', K(g).event(ev), JSON.stringify(event)]]);
     return { ok: true };
   },
 
-  async resetPin(b) {
-    requireAdmin(b);
-    await redis([['HDEL', K.pins, b.personId], ['DEL', K.fails(b.personId)]]);
+  async setCode(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    if (g.legacy) fail(400, 'This group\'s code is set in Vercel (GROUP_CODE). Change it there.');
+    const code = validCode(b.code);
+    if (code === g.code) return { ok: true, code };
+    const [ok] = await redis([['HSETNX', G.codes, code, g.id]]);
+    if (!ok) fail(409, 'That group code is taken. Try another.');
+    await redis([['HDEL', G.codes, g.code], ['HSET', G.groups, g.id, JSON.stringify({ ...g.meta, code })]]);
+    return { ok: true, code };
+  },
+
+  async setAdminPin(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    if (g.legacy) fail(400, 'This group\'s organizer PIN is set in Vercel (ADMIN_PIN). Change it there.');
+    const pin = String(b.newPin || '').trim();
+    if (pin.length < 4 || pin.length > 20) fail(400, 'The organizer PIN should be 4 to 20 characters.');
+    await redis([['HSET', G.groups, g.id, JSON.stringify({ ...g.meta, adminHash: adminHash(g.id, pin) })]]);
     return { ok: true };
   },
 
-  async removePerson(b) {
-    requireAdmin(b);
-    const settings = await loadSettings();
-    const ev = activeHoliday(settings).key;
-    const [dishes] = await redis([['HGETALL', K.dishes(ev)]]);
+  async deleteGroup(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    if (g.legacy) fail(400, 'The original group can\'t be deleted from here.');
+    let cursor = '0', keys = [];
+    do {
+      const [res] = await redis([['SCAN', cursor, 'MATCH', g.prefix + '*', 'COUNT', 500]]);
+      cursor = String(res[0]); keys = keys.concat(res[1]);
+    } while (cursor !== '0');
+    const cmds = keys.map(key => ['DEL', key]);
+    cmds.push(['HDEL', G.codes, g.code], ['HDEL', G.groups, g.id]);
+    await redis(cmds);
+    return { ok: true };
+  },
+
+  async resetPin(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const k = K(g);
+    await redis([['HDEL', k.pins, b.personId], ['DEL', k.fails(b.personId)]]);
+    return { ok: true };
+  },
+
+  async removePerson(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    const [dishes] = await redis([['HGETALL', k.dishes(ev)]]);
     const mine = Object.values(pairs(dishes)).map(d => parse(d, null)).filter(d => d && d.personId === b.personId);
-    const cmds = [['HDEL', K.people, b.personId], ['HDEL', K.pins, b.personId], ['HDEL', K.rsvp(ev), b.personId]];
-    for (const d of mine) cmds.push(['HDEL', K.dishes(ev), d.id]);
+    const cmds = [['HDEL', k.people, b.personId], ['HDEL', k.pins, b.personId], ['HDEL', k.rsvp(ev), b.personId]];
+    for (const d of mine) cmds.push(['HDEL', k.dishes(ev), d.id]);
     await redis(cmds);
     return { ok: true };
   },
@@ -318,21 +446,19 @@ module.exports = async (req, res) => {
   try {
     if (req.method !== 'POST') fail(405, 'Use POST.');
     if (!DB_URL || !DB_TOKEN) fail(500, 'The database isn\'t connected yet. Connect Upstash in Vercel → Storage.');
-    if (!FAMILY) fail(500, 'GROUP_CODE isn\'t set in Vercel yet.');
     let b = req.body;
     if (typeof b === 'string') b = parse(b, {});
     b = b || {};
+    const ip = clientIp(req);
+    if (open[b.action]) return res.status(200).json(await open[b.action](b, ip));
     const fn = actions[b.action];
     if (!fn) fail(400, 'Unknown action.');
-    if (b.action !== 'peek') {
-      const code = String(b.family || '').trim().toLowerCase();
-      if (!code || !safeEq(code, FAMILY)) fail(401, 'That group code isn\'t right.');
-    }
-    res.status(200).json(await fn(b));
+    const g = await resolveGroup(b.family, ip);
+    res.status(200).json(await fn(g, b, ip));
   } catch (e) {
     const status = e.status || 500;
-    if (status === 500 && !e.status) console.error(e);
+    if (!e.status) console.error(e);
     res.status(status).json({ error: e.status ? e.message : 'Something went wrong. Try again.' });
   }
 };
-module.exports._test = { HOLIDAYS, occurrence, activeHoliday, easter };
+module.exports._test = { HOLIDAYS, occurrence, activeHoliday, easter, normCode };
