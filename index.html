@@ -20,7 +20,7 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
 html,body{margin:0}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh;
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg) var(--pattern);background-size:180px 180px;color:var(--ink);line-height:1.5;min-height:100vh;
   transition:background-color .4s,color .4s;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 h1,h2,h3{font-family:'Fraunces',Georgia,serif;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.15}
 a{color:var(--accent)}
@@ -75,10 +75,28 @@ textarea.input{resize:vertical;min-height:70px}
 }
 
 /* ---------- Hero banner ---------- */
-.hero{position:relative;color:#fff;background:var(--accent);overflow:hidden}
-.hero::before{content:"";position:absolute;inset:0;background:var(--hero-pattern);background-size:140px 140px;opacity:1}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,color-mix(in srgb,var(--accent) 100%,#000 0%) 20%,color-mix(in srgb,var(--accent) 70%,#000 30%))}
-.hero .container{position:relative;z-index:1;padding-top:64px;padding-bottom:64px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+.hero{position:relative;color:#fff;background:var(--hero, var(--accent));overflow:hidden;transition:background .5s}
+.hero::before{content:"";position:absolute;inset:0;background:var(--hero-pattern);background-size:140px 140px;pointer-events:none}
+.hero::after{content:"";position:absolute;inset:auto 0 0 0;height:40%;background:linear-gradient(0deg,rgba(0,0,0,.18),transparent);pointer-events:none}
+.hero h1{text-shadow:0 2px 18px rgba(0,0,0,.25)}
+/* Festive layers: particles (canvas) and the hanging garland (svg) */
+.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.garland{position:absolute;left:0;right:0;top:0;height:78px;pointer-events:none;z-index:2;overflow:visible}
+.garland .gi{transform-box:view-box;animation:sway 3.2s ease-in-out infinite alternate}
+.garland .glow{animation:twinkle 1.6s ease-in-out infinite alternate}
+@keyframes sway{from{transform:rotate(-4deg)}to{transform:rotate(4deg)}}
+@keyframes twinkle{0%{opacity:.35}100%{opacity:1}}
+.festive-stripe{height:8px;background:var(--stripe);background-size:34px 34px}
+.foot{position:relative}
+.foot::before{content:"";position:absolute;left:0;right:0;top:-1px;height:6px;background:var(--stripe);background-size:34px 34px}
+.section-head h2::after,.land-grid h2::after,.how h2::after{content:"";display:block;width:64px;height:5px;border-radius:5px;margin-top:8px;background:var(--festive)}
+.cat,.step,.form-card,.side .card{position:relative;overflow:hidden}
+.cat::before,.step::before,.form-card::before,.side .card::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--festive)}
+.countdown{box-shadow:0 0 0 1px rgba(255,255,255,.12),0 10px 40px rgba(0,0,0,.18)}
+.countdown .icon{animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-5px) rotate(-6deg)}}
+@media (prefers-reduced-motion: reduce){.garland .gi,.garland .glow,.countdown .icon{animation:none}}
+.hero .container{position:relative;z-index:3;padding-top:96px;padding-bottom:64px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
 .hero .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:.78rem;font-weight:700;opacity:.85}
 .hero h1{font-size:clamp(2.3rem,5.5vw,3.8rem);margin:10px 0 8px}
 .hero .tagline{font-family:'Fraunces',serif;font-style:italic;font-size:1.2rem;opacity:.92}
@@ -94,7 +112,7 @@ textarea.input{resize:vertical;min-height:70px}
 .countdown .small{text-transform:uppercase;letter-spacing:.12em;font-size:.76rem;font-weight:700;opacity:.9;margin-top:6px}
 .countdown .icon{width:44px;height:44px;margin:0 auto 8px;display:block}
 @media(max-width:720px){
-  .hero .container{grid-template-columns:1fr;padding-top:40px;padding-bottom:40px;gap:26px}
+  .hero .container{grid-template-columns:1fr;padding-top:78px;padding-bottom:40px;gap:26px}
   .countdown{display:flex;align-items:center;gap:14px;text-align:left;padding:14px 18px}
   .countdown .icon{margin:0;width:36px;height:36px}
   .countdown .big{font-size:2.2rem}
@@ -260,6 +278,7 @@ body.landing .site-only{display:none!important}
       <div class="countdown" id="gateNext"></div>
     </div>
   </header>
+  <div class="festive-stripe"></div>
   <main class="page"><div class="container">
     <div class="land-grid">
       <form class="card form-card" id="gateForm" autocomplete="off">
@@ -310,6 +329,7 @@ body.landing .site-only{display:none!important}
       <div class="countdown" id="countdown"></div>
     </div>
   </header>
+  <div class="festive-stripe"></div>
 
   <main class="page">
     <div class="container layout">
@@ -376,12 +396,223 @@ function iconSvg(name){
     ? `<path d="${i.d}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`
     : `<path d="${i.d}" fill="currentColor" ${i.evenodd?'fill-rule="evenodd"':''}/>`;
 }
+/* ======================= Festive decorations ======================= */
+// hero: banner gradient · fx: animated particles · garland: what hangs across the top
+// stripe: accent stripe colors · festive: accent bar colors
+const FESTIVE = {
+  newyear:     {hero:'linear-gradient(135deg,#10142e 0%,#252050 55%,#5e4410 100%)', fx:'confetti', fxColors:['#f5d27a','#e9e9f2','#c9a227','#ffffff','#b9b9c9'],
+                garland:'tri', gColors:['#d4af37','#d9d9e3','#e9c86a','#9aa0b5'], wire:'rgba(255,255,255,.55)', stripe:['#d4af37','#1d1b2e']},
+  valentines:  {hero:'linear-gradient(135deg,#8e1232 0%,#c42d4b 55%,#ec7795 100%)', fx:'hearts', fxColors:['#ffd1dc','#ff9eb5','#ffffff','#ff5c7f'],
+                garland:'heart', gColors:['#ffffff','#ffc2d1','#ff5c7f'], wire:'rgba(255,255,255,.6)', stripe:['#c42d4b','#ffd1dc']},
+  easter:      {hero:'linear-gradient(135deg,#4c7536 0%,#6f8f45 45%,#8d71b3 100%)', fx:'petals', fxColors:['#fde2f3','#fff3b0','#cdf2dc','#ddd2ff','#ffffff'],
+                garland:'egg', gColors:['#f9c6dd','#fde68a','#bfe8cf','#cdbdf5','#a8d8f0'], wire:'rgba(255,255,255,.6)', stripe:['#f9c6dd','#bfe8cf','#fde68a','#cdbdf5']},
+  memorial:    {hero:'linear-gradient(135deg,#0f1d3a 0%,#2c4a7a 60%,#7c2530 100%)', fx:'stars', fxColors:['#ffffff','#f3d27a'],
+                garland:'tri', gColors:['#b22b34','#ffffff','#2c4a7a'], wire:'rgba(255,255,255,.55)', stripe:['#b22b34','#ffffff','#2c4a7a']},
+  july4:       {hero:'linear-gradient(135deg,#0b1f4d 0%,#1f4a9c 55%,#b8232c 100%)', fx:'fireworks', fxColors:['#ff4d4d','#ffffff','#6fb0ff','#ffd166'],
+                garland:'tri', gColors:['#c62b33','#ffffff','#1f4a9c'], wire:'rgba(255,255,255,.6)', stripe:['#c62b33','#ffffff','#1f4a9c']},
+  labor:       {hero:'linear-gradient(135deg,#a8441a 0%,#d9822b 50%,#2f6b6b 100%)', fx:'bokeh', fxColors:['#ffe0a3','#ffffff','#ffc46b'],
+                garland:'tri', gColors:['#f2a541','#3d6b6b','#fff1d6','#d0562a'], wire:'rgba(255,255,255,.55)', stripe:['#cf6f1f','#3d6b6b']},
+  halloween:   {hero:'radial-gradient(circle at 62% 30%, #fbe3a6 0 40px, rgba(251,227,166,.32) 42px, rgba(251,227,166,.08) 100px, transparent 160px), linear-gradient(160deg,#2a1840 0%,#140e1c 55%,#3d1d08 100%)', fx:'bats', fxColors:['#0a0610','#ff8a2a'],
+                garland:'tri', gColors:['#e8742a','#2a2030','#8c6bc8'], wire:'rgba(255,255,255,.35)', stripe:['#e8742a','#1b1713']},
+  thanksgiving:{hero:'linear-gradient(135deg,#7a2e0e 0%,#b5541c 50%,#c98a2b 100%)', fx:'leaves', fxColors:['#e0702a','#b3361c','#e9b13a','#8f5a1f','#cf4a1c'],
+                garland:'leaf', gColors:['#e0702a','#b3361c','#e9b13a','#8f5a1f'], wire:'rgba(255,255,255,.5)', stripe:['#b5541c','#e9b13a','#8a6a2b']},
+  christmas:   {hero:'linear-gradient(135deg,#6d0f19 0%,#a8232f 50%,#1d4a31 100%)', fx:'snow', fxColors:['#ffffff'],
+                garland:'bulb', gColors:['#ff4b4b','#ffd34d','#4bd17a','#4da3ff','#ff8a3d'], wire:'#1c2a1f', stripe:['#a8232f','#ffffff']},
+  custom:      {hero:'linear-gradient(135deg,#25506e 0%,#3d6c8c 50%,#5c6f4e 100%)', fx:'confetti', fxColors:['#ffd166','#ef476f','#06d6a0','#ffffff','#7fc8f8'],
+                garland:'tri', gColors:['#ffd166','#ef476f','#06d6a0','#118ab2'], wire:'rgba(255,255,255,.55)', stripe:['#3d6c8c','#ffd166']},
+};
+const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const stripeCss = cols => {
+  const w = 12, stops = cols.map((c, i) => `${c} ${i*w}px ${(i+1)*w}px`).join(',');
+  return `repeating-linear-gradient(-45deg,${stops})`;
+};
+
+// ---- Garland: a wire that swoops across the top of the banner with things hanging off it
+function garlandSvg(f, width){
+  const H = 78, swag = Math.max(1, Math.round(width / 420)), seg = width / swag, sag = 22;
+  const yAt = x => 6 + sag * Math.sin(Math.PI * ((x % seg) / seg));
+  let wire = `M0 ${yAt(0)}`;
+  for (let x = 6; x <= width; x += 6) wire += ` L${x} ${yAt(x).toFixed(1)}`;
+  const gap = f.garland === 'bulb' ? 46 : f.garland === 'tri' ? 34 : 50;
+  let items = '', i = 0;
+  for (let x = gap / 2; x < width; x += gap, i++) {
+    const y = yAt(x), c = f.gColors[i % f.gColors.length], d = (i % 7) * -0.45;
+    let shape = '';
+    if (f.garland === 'tri') shape = `<path d="M${x-13} ${y} L${x+13} ${y} L${x} ${y+30} Z" fill="${c}" opacity=".95"/>`;
+    else if (f.garland === 'bulb') shape = `<rect x="${x-3.5}" y="${y-1}" width="7" height="6" rx="1.5" fill="#2b3a2e"/>
+      <ellipse class="glow" style="animation-delay:${(i%5)*-.33}s" cx="${x}" cy="${y+14}" rx="11" ry="13" fill="${c}" opacity=".35"/>
+      <ellipse class="glow" style="animation-delay:${(i%5)*-.33}s" cx="${x}" cy="${y+13}" rx="5.5" ry="8.5" fill="${c}"/>
+      <ellipse cx="${x-1.8}" cy="${y+10}" rx="1.5" ry="3" fill="#fff" opacity=".55"/>`;
+    else if (f.garland === 'heart') shape = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+8}" stroke="${f.wire}" stroke-width="1.2"/>
+      <path transform="translate(${x-11} ${y+5}) scale(.92)" d="${ICONS.heart.d}" fill="${c}"/>`;
+    else if (f.garland === 'egg') shape = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+7}" stroke="${f.wire}" stroke-width="1.2"/>
+      <ellipse cx="${x}" cy="${y+21}" rx="10" ry="13.5" fill="${c}"/>
+      <path d="M${x-9.5} ${y+20} l3.2 -3 3.2 3 3.1 -3 3.2 3 3.1 -3 3.2 3" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>
+      <circle cx="${x-3}" cy="${y+28}" r="1.6" fill="#fff"/><circle cx="${x+3.5}" cy="${y+27}" r="1.6" fill="#fff"/>`;
+    else if (f.garland === 'leaf') shape = `<line x1="${x}" y1="${y}" x2="${x}" y2="${y+6}" stroke="${f.wire}" stroke-width="1.2"/>
+      <path transform="translate(${x-12} ${y+4}) rotate(${(i%2?1:-1)*18} 12 12)" d="${ICONS.leaf.d}" fill-rule="evenodd" fill="${c}"/>`;
+    items += `<g class="gi" style="transform-origin:${x.toFixed(1)}px ${y.toFixed(1)}px;animation-delay:${d}s">${shape}</g>`;
+  }
+  return `<svg class="garland" viewBox="0 0 ${width} ${H}" width="${width}" height="${H}" aria-hidden="true">
+    <path d="${wire}" fill="none" stroke="${f.wire}" stroke-width="${f.garland === 'bulb' ? 2.4 : 1.6}"/>${items}</svg>`;
+}
+
+// ---- Particles: one small canvas animation per banner
+const heartPath = typeof Path2D !== 'undefined' ? new Path2D(ICONS.heart.d) : null;
+const leafPath = typeof Path2D !== 'undefined' ? new Path2D(ICONS.leaf.d) : null;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+class Festive {
+  constructor(hero){
+    this.hero = hero;
+    this.canvas = document.createElement('canvas'); this.canvas.className = 'fx'; this.canvas.setAttribute('aria-hidden', 'true');
+    hero.prepend(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.p = []; this.bursts = []; this.t = 0; this.next = 0; this.running = false;
+    this.visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(e => { this.visible = e[0].isIntersecting; this.kick(); }).observe(hero);
+    new ResizeObserver(() => this.resize()).observe(hero);
+    document.addEventListener('visibilitychange', () => this.kick());
+  }
+  set(theme){
+    const f = FESTIVE[theme] || FESTIVE.custom;
+    if (this.theme === theme) return;
+    this.theme = theme; this.f = f; this.p = []; this.bursts = [];
+    this.resize(true);
+  }
+  resize(force){
+    const w = this.hero.clientWidth, h = this.hero.clientHeight;
+    if (!w || !h) return;
+    if (!force && w === this.w && h === this.h) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.w = w; this.h = h; this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Re-hang the garland at the new width
+    const old = this.hero.querySelector('.garland'); if (old) old.remove();
+    this.hero.insertAdjacentHTML('afterbegin', garlandSvg(this.f, w));
+    const target = this.count();
+    while (this.p.length < target) this.p.push(this.spawn(true));
+    this.p.length = Math.min(this.p.length, target);
+    if (reducedMotion()) this.drawStill(); else this.kick();
+  }
+  count(){
+    const w = this.w || 800, k = { snow: 9, confetti: 16, leaves: 34, hearts: 38, petals: 26, stars: 22, bokeh: 40, bats: 170, fireworks: 0 }[this.f.fx];
+    return k ? Math.max(4, Math.round(w / k)) : 0;
+  }
+  spawn(anywhere){
+    const f = this.f, w = this.w, h = this.h, top = anywhere ? rnd(-h * .1, h) : rnd(-60, -10);
+    const c = pick(f.fxColors);
+    switch (f.fx) {
+      case 'snow': return { x: rnd(0, w), y: top, r: rnd(1.2, 3.6), vy: rnd(18, 52), sw: rnd(.5, 1.6), ph: rnd(0, 6.3), a: rnd(.55, .95) };
+      case 'confetti': return { x: rnd(0, w), y: top, s: rnd(4, 8), vy: rnd(35, 80), vx: rnd(-15, 15), rot: rnd(0, 6.3), vr: rnd(-4, 4), flip: rnd(0, 6.3), c };
+      case 'leaves': return { x: rnd(0, w), y: top, s: rnd(.55, 1), vy: rnd(28, 60), sw: rnd(15, 40), ph: rnd(0, 6.3), rot: rnd(0, 6.3), vr: rnd(-1.6, 1.6), c, a: rnd(.75, 1) };
+      case 'petals': return { x: rnd(-40, w), y: top, s: rnd(3, 6), vy: rnd(18, 40), vx: rnd(8, 26), rot: rnd(0, 6.3), vr: rnd(-2, 2), c, a: rnd(.6, .95) };
+      case 'hearts': return { x: rnd(0, w), y: anywhere ? rnd(0, h) : h + rnd(10, 60), s: rnd(.35, .8), vy: -rnd(16, 40), ph: rnd(0, 6.3), c, a: rnd(.35, .8) };
+      case 'stars': return { x: rnd(0, w), y: rnd(0, h), s: rnd(1.5, 3.4), vx: rnd(-6, 6), ph: rnd(0, 6.3), sp: rnd(1, 3), c };
+      case 'bokeh': return { x: rnd(0, w), y: anywhere ? rnd(0, h) : h + 20, r: rnd(4, 16), vy: -rnd(8, 22), ph: rnd(0, 6.3), c, a: rnd(.12, .32) };
+      case 'bats': { const dir = Math.random() < .5 ? 1 : -1;
+        return { x: anywhere ? rnd(0, w) : (dir > 0 ? -40 : w + 40), y: rnd(h * .12, h * .7), vx: dir * rnd(40, 90), s: rnd(.6, 1.15), ph: rnd(0, 6.3), fl: rnd(9, 14), dir }; }
+    }
+    return {};
+  }
+  kick(){
+    const go = this.visible && document.visibilityState === 'visible' && !reducedMotion() && this.f;
+    if (go && !this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame(t => this.frame(t)); }
+    if (!go) this.running = false;
+  }
+  frame(now){
+    if (!this.running) return;
+    const dt = Math.min(.05, (now - this.last) / 1000); this.last = now; this.t += dt;
+    this.step(dt); this.draw();
+    requestAnimationFrame(t => this.frame(t));
+  }
+  step(dt){
+    const { w, h, f } = this;
+    for (let i = 0; i < this.p.length; i++) {
+      const p = this.p[i];
+      switch (f.fx) {
+        case 'snow': p.y += p.vy * dt; p.x += Math.sin(this.t * p.sw + p.ph) * 12 * dt; if (p.y > h + 5) this.p[i] = this.spawn(); break;
+        case 'confetti': p.y += p.vy * dt; p.x += p.vx * dt; p.rot += p.vr * dt; p.flip += 5 * dt; if (p.y > h + 10) this.p[i] = this.spawn(); break;
+        case 'leaves': p.y += p.vy * dt; p.x += Math.sin(this.t * 1.2 + p.ph) * p.sw * dt; p.rot += p.vr * dt; if (p.y > h + 20) this.p[i] = this.spawn(); break;
+        case 'petals': p.y += p.vy * dt; p.x += p.vx * dt; p.rot += p.vr * dt; if (p.y > h + 10 || p.x > w + 20) this.p[i] = this.spawn(); break;
+        case 'hearts': p.y += p.vy * dt; p.x += Math.sin(this.t + p.ph) * 10 * dt; if (p.y < -30) this.p[i] = this.spawn(); break;
+        case 'stars': p.x += p.vx * dt; if (p.x < -5) p.x = w + 5; if (p.x > w + 5) p.x = -5; break;
+        case 'bokeh': p.y += p.vy * dt; if (p.y < -30) this.p[i] = this.spawn(); break;
+        case 'bats': p.x += p.vx * dt; p.y += Math.sin(this.t * 2 + p.ph) * 14 * dt; if (p.x < -60 || p.x > w + 60) this.p[i] = this.spawn(); break;
+      }
+    }
+    if (f.fx === 'fireworks') {
+      this.next -= dt;
+      if (this.next <= 0) {
+        this.next = rnd(.35, .9);
+        const cx = rnd(w * .08, w * .92), cy = rnd(h * .15, h * .55), c = pick(f.fxColors), n = 44 + Math.floor(rnd(0, 24)), sp = rnd(110, 190);
+        for (let k = 0; k < n; k++) { const a = (k / n) * 6.283 + rnd(-.08, .08), v = sp * rnd(.6, 1);
+          this.bursts.push({ x: cx, y: cy, px: cx, py: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: rnd(1, 1.7), age: 0, c: Math.random() < .2 ? '#fff' : c }); }
+      }
+      for (const b of this.bursts) { b.px = b.x; b.py = b.y; b.age += dt; b.vx *= (1 - 1.2 * dt); b.vy = b.vy * (1 - 1.2 * dt) + 55 * dt; b.x += b.vx * dt; b.y += b.vy * dt; }
+      this.bursts = this.bursts.filter(b => b.age < b.life);
+    }
+  }
+  draw(){
+    const { ctx, w, h, f } = this;
+    ctx.clearRect(0, 0, w, h);
+    for (const p of this.p) {
+      switch (f.fx) {
+        case 'snow': ctx.globalAlpha = p.a; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill(); break;
+        case 'confetti': ctx.globalAlpha = .9; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(1, Math.cos(p.flip)); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s, p.s, p.s * 2); ctx.restore(); break;
+        case 'leaves': ctx.globalAlpha = p.a; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.scale(p.s, p.s); ctx.translate(-12, -12); ctx.fillStyle = p.c; ctx.fill(leafPath, 'evenodd'); ctx.restore(); break;
+        case 'petals': ctx.globalAlpha = p.a; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.beginPath(); ctx.ellipse(0, 0, p.s, p.s * 1.8, 0, 0, 6.283); ctx.fill(); ctx.restore(); break;
+        case 'hearts': { const fade = Math.min(1, p.y / (h * .35)); ctx.globalAlpha = p.a * Math.max(0, fade); ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.s, p.s); ctx.translate(-12, -12); ctx.fillStyle = p.c; ctx.fill(heartPath); ctx.restore(); break; }
+        case 'stars': { const tw = .35 + .65 * Math.abs(Math.sin(this.t * p.sp + p.ph)); ctx.globalAlpha = tw; ctx.fillStyle = p.c; ctx.beginPath();
+          const s = p.s; ctx.moveTo(p.x, p.y - s * 2); ctx.lineTo(p.x + s * .5, p.y - s * .5); ctx.lineTo(p.x + s * 2, p.y); ctx.lineTo(p.x + s * .5, p.y + s * .5); ctx.lineTo(p.x, p.y + s * 2); ctx.lineTo(p.x - s * .5, p.y + s * .5); ctx.lineTo(p.x - s * 2, p.y); ctx.lineTo(p.x - s * .5, p.y - s * .5); ctx.fill(); break; }
+        case 'bokeh': ctx.globalAlpha = p.a * (.7 + .3 * Math.sin(this.t + p.ph)); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill(); break;
+        case 'bats': {
+          const flap = Math.sin(this.t * p.fl + p.ph); ctx.globalAlpha = .92; ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.s * p.dir, p.s); ctx.fillStyle = '#0a0610';
+          ctx.beginPath(); ctx.ellipse(0, 0, 4, 6, 0, 0, 6.283); ctx.fill();
+          for (const side of [-1, 1]) { ctx.beginPath(); ctx.moveTo(side * 2, -2);
+            ctx.quadraticCurveTo(side * 10, -10 * flap - 4, side * 22, -8 * flap);
+            ctx.quadraticCurveTo(side * 17, -2, side * 15, 3); ctx.quadraticCurveTo(side * 11, 0, side * 8, 4); ctx.quadraticCurveTo(side * 5, 1, side * 2, 3); ctx.fill(); }
+          ctx.beginPath(); ctx.moveTo(-3, -5); ctx.lineTo(-2, -9); ctx.lineTo(0, -6); ctx.lineTo(2, -9); ctx.lineTo(3, -5); ctx.fill();
+          ctx.restore(); break; }
+      }
+    }
+    if (f.fx === 'fireworks') {
+      ctx.lineCap = 'round';
+      ctx.globalCompositeOperation = 'lighter';
+      for (const b of this.bursts) { const k = Math.max(0, 1 - b.age / b.life); ctx.globalAlpha = k;
+        ctx.strokeStyle = b.c; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(b.x - (b.x - b.px) * 4, b.y - (b.y - b.py) * 4); ctx.lineTo(b.x, b.y); ctx.stroke();
+        ctx.fillStyle = b.c; ctx.globalAlpha = k * .35; ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, 6.283); ctx.fill(); }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawStill(){
+    // Reduced motion: a single calm frame (no fireworks or bats mid-flight).
+    if (this.f.fx === 'fireworks' || this.f.fx === 'bats') { this.ctx.clearRect(0, 0, this.w, this.h); return; }
+    this.draw();
+  }
+}
+const festive = new Map();
+function decorate(theme){
+  document.querySelectorAll('.hero').forEach(hero => {
+    if (!festive.has(hero)) festive.set(hero, new Festive(hero));
+    festive.get(hero).set(theme);
+  });
+}
+
 function applyTheme(id){
   const t = THEMES[id] || THEMES.custom, r = document.documentElement.style;
   for (const k of ['bg','surface','ink','muted','line','accent','accent2']) r.setProperty('--'+k, t[k]);
   r.setProperty('--accent-ink', '#fff');
-  const enc = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><g color="#fff" opacity=".14"><g transform="translate(16 16) scale(1.2)">${iconSvg(t.icon)}</g><g transform="translate(86 80) rotate(18 12 12)">${iconSvg(t.icon)}</g></g></svg>`);
+  const enc = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><g color="#fff" opacity=".08"><g transform="translate(16 16) scale(1.2)">${iconSvg(t.icon)}</g><g transform="translate(86 80) rotate(18 12 12)">${iconSvg(t.icon)}</g></g></svg>`);
   r.setProperty('--hero-pattern', `url("data:image/svg+xml,${enc}")`);
+  const f = FESTIVE[id] || FESTIVE.custom;
+  r.setProperty('--hero', f.hero);
+  r.setProperty('--stripe', stripeCss(f.stripe));
+  r.setProperty('--festive', `linear-gradient(90deg,${f.gColors.join(',')})`);
+  const bodyEnc = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180"><g color="${t.accent}" opacity="${t.dark ? .07 : .045}"><g transform="translate(20 24) scale(1.1)">${iconSvg(t.icon)}</g><g transform="translate(112 104) rotate(-16 12 12) scale(.9)">${iconSvg(t.icon)}</g></g></svg>`);
+  r.setProperty('--pattern', `url("data:image/svg+xml,${bodyEnc}")`);
+  decorate(id);
   document.querySelector('meta[name=theme-color]').content = t.surface;
   document.querySelectorAll('#brandIcon,#gateIcon').forEach(el => el.innerHTML = iconSvg(t.icon));
   r.colorScheme = t.dark ? 'dark' : 'light';
