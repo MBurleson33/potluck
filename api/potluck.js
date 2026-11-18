@@ -13,6 +13,11 @@
 //   SITE_NAME     optional, front-page name (default "Holiday Potluck")
 //   MAX_GROUPS    optional, cap on groups that can be created (default 1000)
 //   KEY_PREFIX    optional (default "pl:"), TIMEZONE optional (default America/Chicago)
+//   SITE_URL      optional, used in emails (default https://holidaypotluck.vercel.app)
+//   RESEND_API_KEY + EMAIL_FROM   optional, turn on email (sign-up alerts and day-before reminders)
+//   CRON_SECRET   optional, protects the daily job in vercel.json (Vercel sends it automatically)
+//   INACTIVE_DAYS optional, groups with no activity this long are removed by the daily job
+//                 (default 540, about 18 months; set to 0 to turn cleanup off)
 const crypto = require('crypto');
 
 const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -23,6 +28,11 @@ const P = process.env.KEY_PREFIX || 'pl:';
 const TZ = process.env.TIMEZONE || 'America/Chicago';
 const SITE_NAME = process.env.SITE_NAME || 'Holiday Potluck';
 const MAX_GROUPS = Number(process.env.MAX_GROUPS) || 1000;
+const SITE_URL = (process.env.SITE_URL || 'https://holidaypotluck.vercel.app').replace(/\/$/, '');
+const RESEND_KEY = process.env.RESEND_API_KEY || '';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Holiday Potluck <onboarding@resend.dev>';
+const CRON_SECRET = process.env.CRON_SECRET || '';
+const INACTIVE_DAYS = process.env.INACTIVE_DAYS === undefined ? 540 : Number(process.env.INACTIVE_DAYS) || 0;
 
 // Site-wide keys
 const G = {
@@ -40,6 +50,11 @@ const K = g => ({
   event: ev => g.prefix + 'ev:' + ev,
   dishes: ev => g.prefix + 'dish:' + ev,
   rsvp: ev => g.prefix + 'rsvp:' + ev,
+  claims: ev => g.prefix + 'claim:' + ev,      // hash: requestId -> personId
+  reminded: ev => g.prefix + 'reminded:' + ev,
+  emails: g.prefix + 'emails',                  // hash: personId -> email (never sent to other guests)
+  ver: g.prefix + 'ver',                        // bumps on every change, so pages can check cheaply
+  last: g.prefix + 'last',                      // last activity time, for the owner dashboard and cleanup
 });
 const CATEGORIES = [
   { id: 'main', name: 'Main dishes' },
@@ -187,7 +202,9 @@ async function resolveGroup(rawCode, ip) {
 }
 
 const DEFAULT_SETTINGS = { mode: 'auto', holiday: 'thanksgiving', siteName: SITE_NAME };
-const DEFAULT_EVENT = { title: '', dateOverride: '', time: '', location: '', host: '', notes: '', targets: {} };
+const DEFAULT_EVENT = { title: '', dateOverride: '', time: '', location: '', host: '', notes: '', targets: {}, requests: [] };
+const DIET_TAGS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy'];
+const validEmail = e => /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i.test(e);
 
 async function loadSettings(g) {
   const [s] = await redis([['GET', K(g).settings]]);
@@ -202,9 +219,10 @@ async function fullState(g, settings) {
   const hol = activeHoliday(settings, now);
   const ev = hol.key, k = K(g);
   const prevKey = hol.id === 'custom' ? null : `${hol.id}-${hol.year - 1}`;
-  const [people, pins, event, dishes, rsvp, prev] = await redis([
+  const [people, pins, event, dishes, rsvp, prev, claims, ver] = await redis([
     ['HGETALL', k.people], ['HKEYS', k.pins], ['GET', k.event(ev)],
     ['HGETALL', k.dishes(ev)], ['HGETALL', k.rsvp(ev)], ['GET', prevKey ? k.event(prevKey) : k.event('none')],
+    ['HGETALL', k.claims(ev)], ['GET', k.ver],
   ]);
   const prevEvent = parse(prev, null);
   const pinSet = new Set(pins || []);
@@ -214,7 +232,11 @@ async function fullState(g, settings) {
   return {
     today: now,
     group: { code: g.code, legacy: g.legacy },
-    settings,
+    v: Number(ver) || 0,
+    settings: { ...settings, orgEmail: undefined, notify: !!settings.orgEmail },
+    emailEnabled: !!RESEND_KEY,
+    dietTags: DIET_TAGS,
+    claims: pairs(claims),
     holiday: hol,
     holidays: holidayList(now),
     categories: CATEGORIES,
@@ -276,11 +298,141 @@ function dishFrom(b, existing) {
   if (!name) fail(400, 'Give your dish a name.');
   const cat = CATEGORIES.some(c => c.id === b.cat) ? b.cat : 'side';
   const tags = Array.isArray(b.tags) ? b.tags.filter(t => TAGS.includes(t)) : [];
-  return { ...existing, name, cat, tags, note: cleanNote(b.note, 200), serves: clean(b.serves, 20) };
+  let recipe = clean(b.recipe, 300);
+  if (recipe && !/^https?:\/\//i.test(recipe)) recipe = /^[\w-]+(\.[\w-]+)+/.test(recipe) ? 'https://' + recipe : '';
+  return { ...existing, name, cat, tags, note: cleanNote(b.note, 200), serves: clean(b.serves, 20), recipe };
+}
+
+async function deleteGroupData(g) {
+  let cursor = '0', keys = [];
+  do {
+    const [res] = await redis([['SCAN', cursor, 'MATCH', g.prefix + '*', 'COUNT', 500]]);
+    cursor = String(res[0]); keys = keys.concat(res[1]);
+  } while (cursor !== '0');
+  const cmds = keys.map(key => ['DEL', key]);
+  cmds.push(['HDEL', G.codes, g.code], ['HDEL', G.groups, g.id]);
+  await redis(cmds);
+}
+const groupFromMeta = meta => ({ id: meta.id, prefix: P + 'g:' + meta.id + ':', salt: meta.id, legacy: false, code: meta.code, name: meta.name, meta });
+const legacyGroup = () => ({ id: 'main', prefix: P, salt: LEGACY_CODE, legacy: true, code: normCode(LEGACY_CODE), name: '' });
+async function allGroups() {
+  const [raw] = await redis([['HGETALL', G.groups]]);
+  const list = Object.values(pairs(raw)).map(m => parse(m, null)).filter(Boolean).map(groupFromMeta);
+  if (LEGACY_CODE) list.unshift(legacyGroup());
+  return list;
+}
+
+/* ---------- Email (optional, through Resend) ---------- */
+const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function sendEmail(to, subject, html) {
+  if (!RESEND_KEY || !to) return false;
+  try {
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 5000);
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST', signal: ctl.signal,
+      headers: { Authorization: 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject, html }),
+    });
+    clearTimeout(timer);
+    if (!r.ok) console.error('Email failed', r.status, await r.text());
+    return r.ok;
+  } catch (e) { console.error('Email failed', e.message); return false; }
+}
+const emailShell = (title, body, g) => `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#2b2420">
+  <h2 style="font-family:Georgia,serif;margin:0 0 12px">${escHtml(title)}</h2>${body}
+  <p style="margin-top:24px"><a href="${SITE_URL}/?code=${encodeURIComponent(g.code)}" style="background:#b5541c;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold">See the menu</a></p>
+  <p style="color:#888;font-size:12px;margin-top:24px">You're getting this because you asked for potluck emails. To stop, remove your email on the site.</p></div>`;
+async function notifyOrganizer(g, dish) {
+  if (!RESEND_KEY) return;
+  const settings = await loadSettings(g);
+  if (!settings.orgEmail) return;
+  const [p] = await redis([['HGET', K(g).people, dish.personId]]);
+  const who = (parse(p, {}) || {}).name || 'Someone';
+  const hol = activeHoliday(settings);
+  const cat = (CATEGORIES.find(c => c.id === dish.cat) || {}).name || '';
+  await sendEmail(settings.orgEmail, `${who} is bringing ${dish.name}`,
+    emailShell(`${who} is bringing ${dish.name}`, `<p>New sign-up for <b>${escHtml(settings.siteName)}</b> (${escHtml(hol.name)}): <b>${escHtml(dish.name)}</b>${cat ? ' in ' + escHtml(cat) : ''}.</p>`, g));
+}
+
+/* ---------- Daily job: day-before reminders, then cleanup of long-inactive groups ---------- */
+async function dailyJob() {
+  const now = today(), tomorrow = addDays(now, 1), out = { reminders: 0, groupsReminded: 0, removed: 0 };
+  const groups = await allGroups();
+  const info = groups.length ? await redis(groups.flatMap(g => [['GET', K(g).settings], ['GET', K(g).last]])) : [];
+  for (let i = 0; i < groups.length; i++) {
+    const g = groups[i];
+    const settings = { ...DEFAULT_SETTINGS, ...(g.name ? { siteName: g.name } : {}), ...parse(info[i * 2], {}) };
+    const last = Number(info[i * 2 + 1]) || (g.meta && g.meta.created) || 0;
+    if (!g.legacy && INACTIVE_DAYS > 0 && last && Date.now() - last > INACTIVE_DAYS * 864e5) { await deleteGroupData(g); out.removed++; continue; }
+    if (!RESEND_KEY) continue;
+    const hol = activeHoliday(settings, now), k = K(g);
+    const [evRaw, sent] = await redis([['GET', k.event(hol.key)], ['GET', k.reminded(hol.key)]]);
+    const ev = { ...DEFAULT_EVENT, ...parse(evRaw, {}) };
+    if ((ev.dateOverride || hol.date) !== tomorrow || sent) continue;
+    const [people, dishes, rsvps, emails] = await redis([['HGETALL', k.people], ['HGETALL', k.dishes(hol.key)], ['HGETALL', k.rsvp(hol.key)], ['HGETALL', k.emails]]);
+    const ppl = pairs(people), dl = Object.values(pairs(dishes)).map(d => parse(d, null)).filter(Boolean), rs = pairs(rsvps);
+    const title = ev.title || hol.name;
+    for (const [pid, email] of Object.entries(pairs(emails))) {
+      const mine = dl.filter(d => d.personId === pid), r = parse(rs[pid], {});
+      if (!mine.length && !['yes', 'maybe'].includes(r.status)) continue;
+      const name = (parse(ppl[pid], {}) || {}).name || 'there';
+      const when = [ev.time, ev.location].filter(Boolean).map(escHtml).join(' · ');
+      const body = `<p>Hi ${escHtml(name)}! ${escHtml(title)} is tomorrow${when ? ': ' + when : ''}.</p>` +
+        (mine.length ? `<p>You signed up to bring:</p><ul>${mine.map(d => `<li><b>${escHtml(d.name)}</b>${d.serves ? ' (serves ' + escHtml(d.serves) + ')' : ''}</li>`).join('')}</ul>` : `<p>You haven't signed up for a dish yet. There's still time!</p>`);
+      if (await sendEmail(email, `Reminder: ${title} is tomorrow`, emailShell(`See you tomorrow!`, body, g))) out.reminders++;
+    }
+    await redis([['SET', k.reminded(hol.key), '1', 'EX', 259200]]);
+    out.groupsReminded++;
+  }
+  return out;
 }
 
 /* ---------- Actions that don't need a group ---------- */
+async function requireOwner(b, ip) {
+  if (!OWNER) fail(400, 'Set ADMIN_PIN in Vercel to use the owner dashboard.');
+  await peekLimit('admin', ip, 10, 'Too many wrong PINs. Wait 10 minutes and try again.');
+  if (!b.ownerPin || !safeEq(String(b.ownerPin).trim(), OWNER)) {
+    await limit('admin', ip, 1e9, 600, '');
+    fail(401, 'That PIN isn\'t right.');
+  }
+}
 const open = {
+  // Site owner (ADMIN_PIN): every group, with activity, for spotting spam and cleaning up.
+  async ownerList(b, ip) {
+    await requireOwner(b, ip);
+    const groups = await allGroups();
+    const info = groups.length ? await redis(groups.flatMap(g => [['HLEN', K(g).people], ['GET', K(g).last], ['GET', K(g).settings]])) : [];
+    return {
+      inactiveDays: INACTIVE_DAYS, emailEnabled: !!RESEND_KEY, maxGroups: MAX_GROUPS,
+      groups: groups.map((g, i) => {
+        const settings = parse(info[i * 3 + 2], {});
+        return { id: g.id, code: g.code, legacy: g.legacy, name: settings.siteName || g.name || SITE_NAME,
+          created: (g.meta && g.meta.created) || null, last: Number(info[i * 3 + 1]) || null, people: info[i * 3] || 0,
+          holiday: settings.mode === 'fixed' ? settings.holiday : 'auto' };
+      }),
+    };
+  },
+  async ownerDelete(b, ip) {
+    await requireOwner(b, ip);
+    const [raw] = await redis([['HGET', G.groups, String(b.id || '')]]);
+    const meta = parse(raw, null);
+    if (!meta) fail(404, 'That group is already gone.');
+    await deleteGroupData(groupFromMeta(meta));
+    return { ok: true };
+  },
+  async ownerCleanup(b, ip) {
+    await requireOwner(b, ip);
+    const days = int(b.days, 30, 3650);
+    const groups = (await allGroups()).filter(g => !g.legacy);
+    const lasts = groups.length ? await redis(groups.map(g => ['GET', K(g).last])) : [];
+    let removed = 0;
+    for (let i = 0; i < groups.length; i++) {
+      const last = Number(lasts[i]) || groups[i].meta.created || 0;
+      if (last && Date.now() - last > days * 864e5) { await deleteGroupData(groups[i]); removed++; }
+    }
+    return { removed };
+  },
+
   // Front page: theme it for the next holiday.
   async peek() {
     return { holiday: activeHoliday(DEFAULT_SETTINGS), siteName: SITE_NAME };
@@ -303,6 +455,7 @@ const open = {
     await redis([
       ['HSET', G.groups, id, JSON.stringify(meta)],
       ['SET', P + 'g:' + id + ':settings', JSON.stringify({ ...DEFAULT_SETTINGS, siteName: name })],
+      ['SET', P + 'g:' + id + ':last', String(Date.now())],
       ['INCR', G.rate('create', ip)], ['EXPIRE', G.rate('create', ip), 86400],
     ]);
     return { ok: true, code };
@@ -384,6 +537,7 @@ const actions = {
     }
     const dish = dishFrom(b, existing);
     await redis([['HSET', k.dishes(ev), dish.id, JSON.stringify(dish)]]);
+    if (!b.id && !admin) await notifyOrganizer(g, dish);
     return { ok: true, dish };
   },
 
@@ -404,6 +558,10 @@ const actions = {
     await checkPerson(g, b.personId, b.pin, b.token);
     const status = ['yes', 'maybe', 'no'].includes(b.status) ? b.status : 'yes';
     const r = { status, adults: status === 'no' ? 0 : int(b.adults, 0, 30), kids: status === 'no' ? 0 : int(b.kids, 0, 30) };
+    const diet = b.diet || {};
+    const dTags = Array.isArray(diet.tags) ? diet.tags.filter(t => DIET_TAGS.includes(t)) : [];
+    const dNote = clean(diet.note, 100);
+    if (dTags.length || dNote) r.diet = { tags: dTags, note: dNote };
     await redis([['HSET', k.rsvp(ev), b.personId, JSON.stringify(r)]]);
     return { ok: true };
   },
@@ -428,15 +586,77 @@ const actions = {
   async setEvent(g, b, ip) {
     await requireAdmin(g, b, ip);
     const ev = activeHoliday(await loadSettings(g)).key;
+    const [prevRaw] = await redis([['GET', K(g).event(ev)]]);
+    const prevEv = parse(prevRaw, {});
+    const requests = Array.isArray(b.requests)
+      ? b.requests.map(r => ({ id: /^[a-f0-9]{12}$/.test(r && r.id) ? r.id : newId(), text: clean(r && r.text, 80) })).filter(r => r.text).slice(0, 30)
+      : (prevEv.requests || []);
     const targets = {};
     for (const c of CATEGORIES) { const n = int((b.targets || {})[c.id], 0, 50); if (n) targets[c.id] = n; }
     const dateOverride = /^\d{4}-\d{2}-\d{2}$/.test(b.dateOverride || '') ? b.dateOverride : '';
     const event = {
       title: clean(b.title, 60), dateOverride, time: clean(b.time, 30),
-      location: clean(b.location, 120), host: clean(b.host, 60), notes: cleanNote(b.notes, 600), targets,
+      location: clean(b.location, 120), host: clean(b.host, 60), notes: cleanNote(b.notes, 600), targets, requests,
     };
     await redis([['SET', K(g).event(ev), JSON.stringify(event)]]);
     return { ok: true };
+  },
+
+  // Claim one of the organizer's specific requests ("Big cooler", "Cleanup crew").
+  async claim(g, b) {
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    await checkPerson(g, b.personId, b.pin, b.token);
+    const [raw] = await redis([['GET', k.event(ev)]]);
+    if (!(parse(raw, {}).requests || []).some(r => r.id === b.id)) fail(404, 'That request was removed.');
+    const [ok] = await redis([['HSETNX', k.claims(ev), b.id, b.personId]]);
+    if (!ok) {
+      const [who] = await redis([['HGET', k.claims(ev), b.id]]);
+      if (who !== b.personId) fail(409, 'Someone just claimed that one.');
+    }
+    return { ok: true };
+  },
+  async unclaim(g, b) {
+    const k = K(g), ev = activeHoliday(await loadSettings(g)).key;
+    const admin = isAdmin(g, b.adminPin);
+    if (!admin) await checkPerson(g, b.personId, b.pin, b.token);
+    const [who] = await redis([['HGET', k.claims(ev), b.id]]);
+    if (who && !admin && who !== b.personId) fail(403, 'Only the person who claimed it can undo that.');
+    await redis([['HDEL', k.claims(ev), b.id]]);
+    return { ok: true };
+  },
+
+  // Guests: optional email for a reminder the day before.
+  async myInfo(g, b) {
+    await checkPerson(g, b.personId, b.pin, b.token);
+    const [email] = await redis([['HGET', K(g).emails, b.personId]]);
+    return { email: email || '' };
+  },
+  async setMyEmail(g, b) {
+    await checkPerson(g, b.personId, b.pin, b.token);
+    const email = clean(b.email, 254);
+    if (email && !validEmail(email)) fail(400, 'That email address doesn\'t look right.');
+    await redis([email ? ['HSET', K(g).emails, b.personId, email] : ['HDEL', K(g).emails, b.personId]]);
+    return { ok: true };
+  },
+  // Organizer: email me when someone signs up.
+  async orgInfo(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    return { orgEmail: (await loadSettings(g)).orgEmail || '' };
+  },
+  async setOrgEmail(g, b, ip) {
+    await requireAdmin(g, b, ip);
+    const email = clean(b.email, 254);
+    if (email && !validEmail(email)) fail(400, 'That email address doesn\'t look right.');
+    const settings = await loadSettings(g);
+    settings.orgEmail = email;
+    await redis([['SET', K(g).settings, JSON.stringify(settings)]]);
+    return { ok: true };
+  },
+
+  // Cheap check pages use to see whether anything changed.
+  async ver(g) {
+    const [v] = await redis([['GET', K(g).ver]]);
+    return { v: Number(v) || 0 };
   },
 
   async setCode(g, b, ip) {
@@ -462,14 +682,7 @@ const actions = {
   async deleteGroup(g, b, ip) {
     await requireAdmin(g, b, ip);
     if (g.legacy) fail(400, 'The original group can\'t be deleted from here.');
-    let cursor = '0', keys = [];
-    do {
-      const [res] = await redis([['SCAN', cursor, 'MATCH', g.prefix + '*', 'COUNT', 500]]);
-      cursor = String(res[0]); keys = keys.concat(res[1]);
-    } while (cursor !== '0');
-    const cmds = keys.map(key => ['DEL', key]);
-    cmds.push(['HDEL', G.codes, g.code], ['HDEL', G.groups, g.id]);
-    await redis(cmds);
+    await deleteGroupData(g);
     return { ok: true };
   },
 
@@ -492,11 +705,17 @@ const actions = {
   },
 };
 
+const CHANGES = new Set(['signin', 'saveDish', 'removeDish', 'rsvp', 'setHoliday', 'setEvent', 'setCode', 'setAdminPin',
+  'resetPin', 'removePerson', 'copyLastYear', 'claim', 'unclaim']);
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
-    if (req.method !== 'POST') fail(405, 'Use POST.');
     if (!DB_URL || !DB_TOKEN) fail(500, 'The database isn\'t connected yet. Connect Upstash in Vercel → Storage.');
+    if (req.method === 'GET' && new URL(req.url, 'http://x').searchParams.get('cron') === 'daily') {
+      if (!CRON_SECRET || !safeEq(req.headers.authorization || '', 'Bearer ' + CRON_SECRET)) fail(401, 'Not allowed.');
+      return res.status(200).json(await dailyJob());
+    }
+    if (req.method !== 'POST') fail(405, 'Use POST.');
     let b = req.body;
     if (typeof b === 'string') b = parse(b, {});
     b = b || {};
@@ -505,11 +724,14 @@ module.exports = async (req, res) => {
     const fn = actions[b.action];
     if (!fn) fail(400, 'Unknown action.');
     const g = await resolveGroup(b.family, ip);
-    res.status(200).json(await fn(g, b, ip));
+    const out = await fn(g, b, ip);
+    // Anything that changes the group bumps its version (so open pages refresh) and its last-active time.
+    if (CHANGES.has(b.action)) await redis([['INCR', K(g).ver], ['SET', K(g).last, String(Date.now())]]);
+    res.status(200).json(out);
   } catch (e) {
     const status = e.status || 500;
     if (!e.status) console.error(e);
     res.status(status).json({ error: e.status ? e.message : 'Something went wrong. Try again.', code: e.code });
   }
 };
-module.exports._test = { HOLIDAYS, occurrence, activeHoliday, easter, normCode };
+module.exports._test = { HOLIDAYS, occurrence, activeHoliday, easter, normCode, dailyJob };
