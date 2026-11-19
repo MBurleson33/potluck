@@ -372,6 +372,11 @@ body.landing .site-only{display:none!important}
 .overlay{position:fixed;inset:0;background:rgba(20,14,8,.45);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:fade .15s}
 .modal{background:var(--surface);color:var(--ink);width:100%;max-width:460px;max-height:90vh;overflow:auto;border-radius:16px;padding:26px;animation:pop .18s ease-out;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .modal.wide{max-width:760px}
+/* Same size on every tab: tabs stay on top, buttons stay at the bottom, the middle scrolls */
+.modal.fixed-h{height:min(760px,90vh);display:flex;flex-direction:column;overflow:hidden}
+.modal.fixed-h .mbody{flex:1;min-height:0;overflow-y:auto;margin:0 -26px;padding:0 26px 4px}
+.modal.fixed-h .mbody .tabs{position:sticky;top:0;background:var(--surface);z-index:1;margin-top:0}
+.modal.fixed-h .acts{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .modal h3{font-size:1.45rem;margin-bottom:8px}
 .modal .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;flex-wrap:wrap}
 .modal .acts .btn{min-width:96px}
@@ -902,10 +907,10 @@ function ico(n){
 }
 
 /* ======================= Custom dialogs ======================= */
-function modal({ title, html = '', wide = false, actions = [{label:'OK', value:true}], onOpen, validate }){
+function modal({ title, html = '', wide = false, fixed = false, actions = [{label:'OK', value:true}], onOpen, validate }){
   return new Promise(resolve => {
     const ov = document.createElement('div'); ov.className = 'overlay';
-    ov.innerHTML = `<div class="modal ${wide?'wide':''}" role="dialog" aria-modal="true">
+    ov.innerHTML = `<div class="modal ${wide?'wide':''} ${fixed?'fixed-h':''}" role="dialog" aria-modal="true">
       ${title ? `<h3>${esc(title)}</h3>` : ''}<div class="mbody">${html}</div>
       <div class="err" data-err></div>
       <div class="acts">${actions.map((a,i) => `<button class="btn ${a.kind||''}" data-i="${i}">${esc(a.label)}</button>`).join('')}</div></div>`;
@@ -1565,7 +1570,7 @@ async function organizer(tab = 'event'){
     : '<p class="muted">No one has signed in yet. Send the invite link from the Sharing tab.</p>';
   const tabs = [['event','Event'],['needs','What we need'],['people',`People (${S.people.length})`],['share','Sharing']];
   const res = await modal({
-    wide: true, title: 'Manage your potluck',
+    wide: true, fixed: true, title: 'Manage your potluck',
     html: `<div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button type="button" class="tab ${id===tab?'on':''}" data-tab="${id}" role="tab">${l}</button>`).join('')}</div>
 
       <div class="pane" data-pane="event">
