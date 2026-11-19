@@ -374,6 +374,14 @@ body.landing .site-only{display:none!important}
 .modal.wide{max-width:760px}
 /* Same size on every tab: tabs stay on top, buttons stay at the bottom, the middle scrolls */
 .modal.fixed-h{height:min(760px,90vh);display:flex;flex-direction:column;overflow:hidden}
+@media(min-width:1100px){
+  .modal.wide.fixed-h{max-width:1000px}
+  .ev-top{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end}
+  .ev-top .preview{margin-top:0}
+  .ev-grid{grid-template-columns:repeat(4,1fr)}
+  .ev-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .ev-pair textarea{min-height:46px;height:46px}
+}
 .modal.fixed-h .mbody{flex:1;min-height:0;overflow-y:auto;margin:0 -26px;padding:0 26px 4px}
 .modal.fixed-h .mbody .tabs{position:sticky;top:0;background:var(--surface);z-index:1;margin-top:0}
 .modal.fixed-h .acts{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
@@ -1574,19 +1582,20 @@ async function organizer(tab = 'event'){
     html: `<div class="tabs" role="tablist">${tabs.map(([id, l]) => `<button type="button" class="tab ${id===tab?'on':''}" data-tab="${id}" role="tab">${l}</button>`).join('')}</div>
 
       <div class="pane" data-pane="event">
-        <label class="f" for="oHol">Holiday</label><select class="input" id="oHol">${opts}</select>
-        <div class="preview" id="oPrev"></div>
+        <div class="ev-top"><div><label class="f" for="oHol">Holiday</label><select class="input" id="oHol">${opts}</select></div>
+        <div class="preview" id="oPrev"></div></div>
         <label class="row hidden" id="oFreshRow" style="margin-top:10px;font-size:.9rem"><input type="checkbox" id="oFresh"> Start a fresh list for a new gathering</label>
         <div class="notes hidden" id="oSwitchNote" style="margin-top:16px"></div>
         <div id="oDetails">
           ${S.lastYear ? `<div class="notes" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px"><span>Reuse your ${esc(h.name)} ${S.lastYear.year} setup (place, time and what you needed)?</span><button type="button" class="btn small quiet" id="oCopyLast">Copy last year</button></div>` : ''}
-          <div class="org-grid" style="margin-top:16px">
+          <div class="org-grid ev-grid" style="margin-top:16px">
             <div><label class="f" for="oTitle">Title</label><input class="input" id="oTitle" maxlength="60" value="${esc(ev.title)}" placeholder="${esc(h.name)}"></div>
             <div><label class="f" for="oHost">Host</label><input class="input" id="oHost" maxlength="60" value="${esc(ev.host)}" placeholder="Mom & Dad"></div>
             <div><label class="f" for="oDate">Date</label><input class="input" type="date" id="oDate" value="${esc(ev.dateOverride || h.date || '')}"></div>
             <div><label class="f" for="oTime">Time</label><input class="input" id="oTime" maxlength="30" value="${esc(ev.time)}" placeholder="1:00 PM"></div></div>
-          <label class="f" for="oLoc" style="margin-top:14px">Where</label><input class="input" id="oLoc" maxlength="120" value="${esc(ev.location)}" placeholder="Address">
-          <label class="f" for="oNotes" style="margin-top:14px">Notes for everyone</label><textarea class="input" id="oNotes" maxlength="600" placeholder="Turkey and ham are covered!">${esc(ev.notes)}</textarea>
+          <div class="ev-pair">
+            <div><label class="f" for="oLoc" style="margin-top:14px">Where</label><input class="input" id="oLoc" maxlength="120" value="${esc(ev.location)}" placeholder="Address"></div>
+            <div><label class="f" for="oNotes" style="margin-top:14px">Notes for everyone</label><textarea class="input" id="oNotes" maxlength="600" placeholder="Turkey and ham are covered!">${esc(ev.notes)}</textarea></div></div>
         </div>
         <div style="margin-top:16px"><button type="button" class="link" id="oWizard">Walk me through setup instead</button></div>
       </div>
